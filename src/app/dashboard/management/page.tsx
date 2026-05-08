@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { TrendingUp, CheckCircle, Clock, DollarSign, ShoppingCart, Shield, AlertTriangle, Package } from 'lucide-react'
+import CreditApprovals from '@/components/management/CreditApprovals'
 
 export default async function ManagementDashboard() {
   const supabase = await createClient()
@@ -25,6 +26,7 @@ export default async function ManagementDashboard() {
     .order('created_at', { ascending: false })
 
   const { data: orders } = await supabase.from('orders').select('*').order('created_at', { ascending: false })
+  const { data: creditOrders } = await supabase.from('orders').select('*, customers(*), order_items(*, products(name, sku))').eq('payment_mode', 'credit').in('status', ['pending_manager', 'pending_finance', 'approved', 'rejected']).order('created_at', { ascending: false })
   const { data: payments } = await supabase.from('payments').select('*').order('created_at', { ascending: false })
   const { data: pendingReceipts } = await supabase.from('goods_receipts').select('id').eq('status', 'pending')
 
@@ -60,6 +62,8 @@ export default async function ManagementDashboard() {
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Approvals, revenue and system oversight</p>
         </div>
       </div>
+
+      <CreditApprovals orders={creditOrders || []} currentUser={currentUser} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {stats.map((stat, i) => (
