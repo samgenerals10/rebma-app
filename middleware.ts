@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname
 
-  const publicRoutes = ['/login', '/register', '/pending', '/access-denied']
+  const publicRoutes = ['/login', '/register', '/pending', '/access-denied', '/welcome', '/']
   if (publicRoutes.some(r => path.startsWith(r))) {
     return supabaseResponse
   }
