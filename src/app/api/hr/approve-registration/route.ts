@@ -35,8 +35,8 @@ export async function POST(request: Request) {
   if (regError || !reg) return NextResponse.json({ error: 'Registration not found' }, { status: 404 })
 
   const adminSupabase = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
   const tempPassword = Math.random().toString(36).slice(-10) + 'A1!'
