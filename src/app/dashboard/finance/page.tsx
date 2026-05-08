@@ -55,7 +55,7 @@ export default async function FinanceDashboard() {
             style={{ background: 'var(--accent)', color: 'white' }}>
             <Plus className="w-4 h-4" /> Record Payment
           </Link>
-          <Link href="/dashboard/finance/reconciliation"
+          <Link href="/dashboard/finance/reports" className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-80" style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}><BarChart2 className="w-4 h-4" /> Reports</Link><Link href="/dashboard/finance/reconciliation"
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-80"
             style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
             <DollarSign className="w-4 h-4" /> Reconciliation
