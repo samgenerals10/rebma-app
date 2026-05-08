@@ -70,7 +70,11 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [mounted, setMounted] = useState(false)
   useEffect(() => {
+    setMounted(true)
+    setMounted(true)
     const check = () => setIsMobile(window.innerWidth < 768)
     check()
     window.addEventListener('resize', check)
@@ -275,7 +279,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         <main className="flex-1 p-4 md:p-6 overflow-auto">{children}</main>
       </div>
 
-      {!hideRightPanel && !isMobile && (
+      {!hideRightPanel && (!mounted || !isMobile) && (
         <button onClick={toggleRightPanel} className="fixed z-40 p-1.5 rounded-l-lg"
           style={{ top: 70, right: showRight ? rightWidth : 0, background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRight: 'none', boxShadow: '-2px 0 6px rgba(0,0,0,0.06)', transition: 'right 0.3s ease' }}>
           {showRight
@@ -286,7 +290,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
       {!hideRightPanel && (
         <aside className="fixed right-0 top-0 h-screen flex flex-col z-40"
-          style={{ width: isMobile ? 0 : (showRight ? rightWidth : 0), background: 'var(--card-bg)', borderLeft: showRight && !isMobile ? '1px solid var(--card-border)' : 'none', boxShadow: showRight && !isMobile ? '-2px 0 12px rgba(0,0,0,0.06)' : 'none', transition: 'width 0.3s ease', overflow: 'hidden' }}>
+          style={{ width: mounted && isMobile ? 0 : (showRight ? rightWidth : 0), background: 'var(--card-bg)', borderLeft: showRight && (!mounted || !isMobile) ? '1px solid var(--card-border)' : 'none', boxShadow: showRight && (!mounted || !isMobile) ? '-2px 0 12px rgba(0,0,0,0.06)' : 'none', transition: 'width 0.3s ease', overflow: 'hidden' }}>
           <div className="flex flex-col h-full" style={{ width: rightWidth }}>
 
             <div className="px-4 py-3 flex items-center justify-between flex-shrink-0" style={{ borderBottom: '1px solid var(--card-border)', minHeight: 60 }}>
