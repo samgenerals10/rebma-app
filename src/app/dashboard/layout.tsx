@@ -217,7 +217,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex" style={{ background: 'var(--content-bg)' }}>
       <Sidebar userRole={role} userDepartment={department} />
 
-      <div className="flex flex-col flex-1 min-h-screen"
+      <div className="flex flex-col flex-1 min-h-screen main-content-area"
         className="flex flex-col flex-1 min-h-screen" style={{ marginLeft: leftWidth, marginRight: showRight ? rightWidth : 0, transition: 'margin 0.3s ease' }}>
 
         <header className="sticky top-0 z-30 flex items-center gap-3 px-5"
