@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Package, MapPin, CheckCircle, Navigation WifiOff, Clock } from 'lucide-react'
+import { Package, MapPin, CheckCircle, Navigation, WifiOff, Clock } from 'lucide-react'
 
 interface DeliveryStop {
   id: string
