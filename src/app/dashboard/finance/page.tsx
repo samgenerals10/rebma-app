@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { DollarSign, FileText, Plus, TrendingUp, CreditCard, Banknote, CheckCircle, Clock, Smartphone } from 'lucide-react'
+import { DollarSign, FileText, Plus, TrendingUp, CreditCard, Banknote, CheckCircle, Clock, Smartphone, BarChart2 } from 'lucide-react'
 import FinanceDashboardClient from './FinanceDashboardClient'
 
 export default async function FinanceDashboard() {
