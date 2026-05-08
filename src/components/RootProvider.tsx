@@ -1,6 +1,7 @@
 'use client'
 
-import { ThemeProvider as ClientThemeProvider, useTheme } from '@/components/Sidebar'
+import { ThemeProvider as ClientThemeProvider } from '@/components/ThemeProvider'
+import { useTheme } from '@/components/ThemeProvider'
 import { useEffect, useState } from 'react'
 
 export default function RootProvider({ children }: { children: React.ReactNode }) {
