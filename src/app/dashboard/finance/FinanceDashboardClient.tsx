@@ -5,7 +5,7 @@ import OrderStepper from '@/components/OrderStepper'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle, X, CreditCard, Smartphone, Banknote, Clock, Upload, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
+import { CheckCircle, X, CreditCard, Smartphone, Banknote, Clock, Upload, ChevronDown, ChevronUp, AlertCircle, FileText, Printer } from 'lucide-react'
 
 export default function FinanceDashboardClient({ orders: initialOrders, payments, currentUser }: { orders: any[], payments: any[], currentUser: any }) {
   const supabase = createClient()
@@ -13,6 +13,8 @@ export default function FinanceDashboardClient({ orders: initialOrders, payments
   const [orders, setOrders] = useState(initialOrders)
   const [activeOrder, setActiveOrder] = useState<string | null>(null)
   const [processing, setProcessing] = useState<string | null>(null)
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [rejectingOrder, setRejectingOrder] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
@@ -63,10 +65,15 @@ export default function FinanceDashboardClient({ orders: initialOrders, payments
     setBankAccountNumber(''); setAccountName(''); setBranch(''); setMomoNumber('')
     setMomoAccountName(''); setMomoTransactionId(''); setMomoScreenshot(null)
     setGhanaCardNumber(''); setGhanaCardFront(null); setGhanaCardBack(null)
-    setCustomerPhoto(null); setDueDate(''); setFinanceNotes(''); setRejectionReason(''); setRejectingOrderId(null)
+    setCustomerPhoto(null); setDueDate(''); setFinanceNotes(''); setRejectionReason(''); setRejectingOrder(null); setRejectionReason(''); setRejectingOrderId(null)
   }
 
   const approveOrder = async (order: any) => {
+    // Validate required fields
+    if (order.payment_mode === 'cash' && !cashAmount) { alert('Please enter the amount received'); return }
+    if (order.payment_mode === 'cheque' && (!bankName || !chequeNumber || !chequeDate)) { alert('Please fill in all cheque details'); return }
+    if (order.payment_mode === 'mobile_money' && (!momoNumber || !momoTransactionId)) { alert('Please fill in all Mobile Money details'); return }
+    if (order.payment_mode === 'credit' && (!ghanaCardNumber || !dueDate)) { alert('Please fill in Ghana Card number and due date'); return }
     setProcessing(order.id)
     let paymentDetails: any = {}
 
@@ -186,6 +193,16 @@ export default function FinanceDashboardClient({ orders: initialOrders, payments
           borderLeftWidth: '4px'
         }}>
 
+        {/* Rejected banner */}
+        {order.status === 'rejected' && (
+          <div className="px-5 py-2.5 flex items-center gap-2" style={{ background: '#dc262610', borderBottom: '1px solid #dc262630' }}>
+            <X className="w-3.5 h-3.5" style={{ color: '#dc2626' }} />
+            <p className="text-xs font-medium" style={{ color: '#dc2626' }}>
+              Order Rejected{order.rejection_reason ? ': ' + order.rejection_reason : ''}
+            </p>
+          </div>
+        )}
+
         {/* Order header */}
         <div className="px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -250,6 +267,23 @@ export default function FinanceDashboardClient({ orders: initialOrders, payments
         <div className="px-5 pb-2" style={{ borderTop: '1px solid var(--card-border)' }}>
           <OrderStepper status={order.status} />
         </div>
+
+        {/* Invoice buttons for approved orders */}
+        {order.status === 'approved' && (
+          <div className="px-5 py-3 flex items-center gap-3" style={{ borderTop: '1px solid var(--card-border)', background: '#05966908' }}>
+            <p className="text-xs font-medium flex-1" style={{ color: '#059669' }}>Order approved — generate documents</p>
+            <a href={'/dashboard/finance/invoice?order_id=' + order.id + '&type=invoice'} target="_blank"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ background: '#059669', color: 'white' }}>
+              <FileText className="w-3.5 h-3.5" /> Invoice
+            </a>
+            <a href={'/dashboard/finance/invoice?order_id=' + order.id + '&type=packing'} target="_blank"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ background: '#1a73e8', color: 'white' }}>
+              <Printer className="w-3.5 h-3.5" /> Packing Note
+            </a>
+          </div>
+        )}
 
         {/* Payment details form — inline */}
         {isActive && isPending && !isPendingManager && (
@@ -411,7 +445,35 @@ export default function FinanceDashboardClient({ orders: initialOrders, payments
         </div>
 
         <div className="space-y-3">
-          {displayedOrders.length === 0 && (
+          {/* Rejection reason modal */}
+      {rejectingOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="rounded-2xl p-6 w-full max-w-md" style={{ background: 'var(--card-bg)' }}>
+            <h3 className="font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Reject Order</h3>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>{rejectingOrder.order_number} — {rejectingOrder.customers?.name}</p>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Reason for rejection *</label>
+            <textarea value={rejectionReason} onChange={e => setRejectionReason(e.target.value)}
+              placeholder="e.g. Insufficient payment details, Invalid cheque..." rows={3}
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none mb-4"
+              style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }} />
+            <div className="flex justify-end gap-3">
+              <button onClick={() => { setRejectingOrder(null); setRejectionReason('') }}
+                className="px-4 py-2 rounded-lg text-sm font-medium"
+                style={{ background: 'var(--table-header-bg)', color: 'var(--text-primary)' }}>
+                Cancel
+              </button>
+              <button onClick={() => rejectOrder(rejectingOrder)} disabled={processing === rejectingOrder.id}
+                className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 disabled:opacity-50"
+                style={{ background: '#dc2626', color: 'white' }}>
+                {processing === rejectingOrder.id ? <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> : <X className="w-4 h-4" />}
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {displayedOrders.length === 0 && (
             <div className="rounded-xl p-10 text-center" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}>
               <CheckCircle className="w-10 h-10 mx-auto mb-3" style={{ color: '#059669' }} />
               <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
