@@ -20,8 +20,8 @@ export default function Welcome() {
             <Link href="/login" className="text-gray-600 hover:text-gray-900 font-medium transition">
               Sign In
             </Link>
-            <Link href="/register" className="bg-emerald-500 hover:bg-emerald-600 text-white font-medium px-5 py-2.5 rounded-lg transition">
-              Get Started
+            <Link href="/login" className="bg-emerald-500 hover:bg-emerald-600 text-white font-medium px-5 py-2.5 rounded-lg transition">
+              Sign In
             </Link>
           </div>
         </nav>
@@ -43,8 +43,8 @@ export default function Welcome() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4">
-            <Link href="/register" className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-8 py-4 rounded-xl transition shadow-lg shadow-emerald-200">
-              Get Started
+            <Link href="/login" className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-8 py-4 rounded-xl transition shadow-lg shadow-emerald-200">
+              Sign In
               <ArrowRight className="w-5 h-5" />
             </Link>
             <Link href="/login" className="flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 font-semibold px-8 py-4 rounded-xl border-2 border-gray-200 transition">
