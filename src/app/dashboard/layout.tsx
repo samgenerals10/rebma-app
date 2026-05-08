@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Sidebar, { ThemeToggle, NotificationBell, MessagingSystem } from '@/components/Sidebar'
+import MobileNav from '@/components/MobileNav'
 import { useSidebar } from '@/components/SidebarContext'
 import { UserAvatar } from '@/components/UserAvatar'
 import Link from 'next/link'
@@ -218,7 +219,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       <Sidebar userRole={role} userDepartment={department} />
 
       <div className="flex flex-col flex-1 min-h-screen"
-        style={{ marginLeft: leftWidth, marginRight: showRight ? rightWidth : 0, transition: 'margin 0.3s ease' }} className="flex flex-col flex-1 min-h-screen mobile-no-margin">
+        className="flex flex-col flex-1 min-h-screen" style={{ marginLeft: leftWidth, marginRight: showRight ? rightWidth : 0, transition: 'margin 0.3s ease' }}>
 
         <header className="sticky top-0 z-30 flex items-center gap-3 px-5"
           style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--header-border)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', minHeight: 60 }}>
