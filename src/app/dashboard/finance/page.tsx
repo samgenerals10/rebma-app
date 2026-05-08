@@ -44,18 +44,18 @@ export default async function FinanceDashboard() {
           <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Finance</h2>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Payments, invoices and reconciliation</p>
         </div>
-        <div className="flex gap-3">
-          <Link href="/dashboard/finance/invoices/new"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
-            style={{ background: '#059669', color: 'white' }}>
-            <FileText className="w-4 h-4" /> Generate Invoice
-          </Link>
+        <div className="flex gap-2 flex-wrap">
           <Link href="/dashboard/finance/payments/new"
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
             style={{ background: 'var(--accent)', color: 'white' }}>
             <Plus className="w-4 h-4" /> Record Payment
           </Link>
-          <Link href="/dashboard/finance/reports" className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-80" style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}><BarChart2 className="w-4 h-4" /> Reports</Link><Link href="/dashboard/finance/reconciliation"
+          <Link href="/dashboard/finance/reports"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-80"
+            style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
+            <BarChart2 className="w-4 h-4" /> Reports
+          </Link>
+          <Link href="/dashboard/finance/reconciliation"
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-80"
             style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
             <DollarSign className="w-4 h-4" /> Reconciliation
