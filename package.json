@@ -3,21 +3,32 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "NODE_OPTIONS='--max-old-space-size=8192' next dev --webpack",
+    "dev:all": "NODE_OPTIONS='--max-old-space-size=8192' next dev --webpack & node meeting-server.js",
     "build": "next build",
     "start": "next start",
+    "meeting": "node meeting-server.js",
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.105.1",
+    "lucide-react": "^1.14.0",
     "next": "16.2.4",
+    "pg": "^8.20.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "simple-peer": "^9.11.1",
+    "socket.io": "^4.7.4",
+    "socket.io-client": "^4.7.4",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/uuid": "^9.0.8",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
