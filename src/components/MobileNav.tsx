@@ -5,8 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   Home, ShoppingCart, MessageCircle, Bell, MoreHorizontal,
   X, TrendingUp, DollarSign, Truck, Package, Users,
-  Settings, LogOut, ChevronRight, BarChart2, Factory,
-  Shield, Cog
+  Settings, LogOut, ChevronRight, Factory
 } from 'lucide-react'
 
 interface Props {
@@ -37,79 +36,78 @@ export default function MobileNav({ user, notifications, messageThreads }: Props
     return TrendingUp
   }
   const DeptIcon = getDeptIcon()
-  const deptHref = `/dashboard/${dept === 'management' ? 'management' : dept}`
-
-  const isActive = (href: string) => pathname.startsWith(href)
-
-  const TABS = [
-    { label: 'Home', icon: Home, href: '/dashboard', exact: true },
-    { label: dept.charAt(0).toUpperCase() + dept.slice(1), icon: DeptIcon, href: deptHref },
-    { label: 'Messages', icon: MessageCircle, href: '/dashboard/messages', badge: unreadMessages },
-    { label: 'Alerts', icon: Bell, href: '#', badge: unreadNotifs },
-    { label: 'More', icon: MoreHorizontal, href: '#', action: () => setDrawerOpen(true) },
-  ]
+  const deptHref = `/dashboard/${dept}`
+  const isActive = (href: string, exact = false) => exact ? pathname === href : pathname.startsWith(href)
 
   const DEPARTMENTS = [
-    { label: 'Management', href: '/dashboard/management', icon: TrendingUp, color: '#1a73e8', roles: ['ceo', 'manager', 'supervisor'] },
-    { label: 'Finance', href: '/dashboard/finance', icon: DollarSign, color: '#059669', roles: ['all'] },
-    { label: 'Marketing', href: '/dashboard/marketing', icon: ShoppingCart, color: '#f59e0b', roles: ['all'] },
-    { label: 'Operations', href: '/dashboard/operations', icon: Package, color: '#8b5cf6', roles: ['all'] },
-    { label: 'Dispatch', href: '/dashboard/dispatch', icon: Truck, color: '#06b6d4', roles: ['all'] },
-    { label: 'Production', href: '/dashboard/production', icon: Factory, color: '#dc2626', roles: ['all'] },
-    { label: 'HR', href: '/dashboard/hr', icon: Users, color: '#ec4899', roles: ['all'] },
-  ].filter(d => d.roles.includes('all') || d.roles.includes(role))
+    { label: 'Management', href: '/dashboard/management', icon: TrendingUp, color: '#1a73e8' },
+    { label: 'Finance', href: '/dashboard/finance', icon: DollarSign, color: '#059669' },
+    { label: 'Marketing', href: '/dashboard/marketing', icon: ShoppingCart, color: '#f59e0b' },
+    { label: 'Operations', href: '/dashboard/operations', icon: Package, color: '#8b5cf6' },
+    { label: 'Dispatch', href: '/dashboard/dispatch', icon: Truck, color: '#06b6d4' },
+    { label: 'Production', href: '/dashboard/production', icon: Factory, color: '#dc2626' },
+    { label: 'HR', href: '/dashboard/hr', icon: Users, color: '#ec4899' },
+  ]
 
   return (
     <>
-      {/* Bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around px-2 pb-safe"
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around px-2"
         style={{ background: 'var(--card-bg)', borderTop: '1px solid var(--card-border)', height: 64, boxShadow: '0 -4px 12px rgba(0,0,0,0.08)' }}>
-        {TABS.map(tab => {
-          const Icon = tab.icon
-          const active = tab.exact ? pathname === tab.href : (tab.href !== '#' && isActive(tab.href))
-          return (
-            <button key={tab.label}
-              onClick={tab.action ? tab.action : undefined}
-              className="relative flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition"
-              style={{ color: active ? 'var(--accent)' : 'var(--text-muted)', minWidth: 56 }}
-              {...(!tab.action && tab.href !== '#' ? { onClick: undefined } : {})}>
-              {tab.action || tab.href === '#' ? (
-                <>
-                  <div className="relative">
-                    <Icon className="w-5 h-5" />
-                    {tab.badge && tab.badge > 0 ? (
-                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold" style={{ background: '#dc2626', fontSize: 9 }}>
-                        {tab.badge > 9 ? '9+' : tab.badge}
-                      </span>
-                    ) : null}
-                  </div>
-                  <span style={{ fontSize: 10, fontWeight: active ? 600 : 400 }}>{tab.label}</span>
-                </>
-              ) : (
-                <Link href={tab.href} className="flex flex-col items-center gap-0.5">
-                  <div className="relative">
-                    <Icon className="w-5 h-5" />
-                    {tab.badge && tab.badge > 0 ? (
-                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold" style={{ background: '#dc2626', fontSize: 9 }}>
-                        {tab.badge > 9 ? '9+' : tab.badge}
-                      </span>
-                    ) : null}
-                  </div>
-                  <span style={{ fontSize: 10, fontWeight: active ? 600 : 400 }}>{tab.label}</span>
-                </Link>
-              )}
-              {active && (
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full" style={{ background: 'var(--accent)' }} />
-              )}
-            </button>
-          )
-        })}
+
+        {/* Home */}
+        <Link href="/dashboard" className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl"
+          style={{ color: isActive('/dashboard', true) ? 'var(--accent)' : 'var(--text-muted)', minWidth: 52 }}>
+          <Home className="w-5 h-5" />
+          <span style={{ fontSize: 10 }}>Home</span>
+        </Link>
+
+        {/* Department */}
+        <Link href={deptHref} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl"
+          style={{ color: isActive(deptHref) ? 'var(--accent)' : 'var(--text-muted)', minWidth: 52 }}>
+          <DeptIcon className="w-5 h-5" />
+          <span style={{ fontSize: 10 }}>{dept.charAt(0).toUpperCase() + dept.slice(1)}</span>
+        </Link>
+
+        {/* Messages */}
+        <Link href="/dashboard/messages" className="relative flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl"
+          style={{ color: isActive('/dashboard/messages') ? 'var(--accent)' : 'var(--text-muted)', minWidth: 52 }}>
+          <div className="relative">
+            <MessageCircle className="w-5 h-5" />
+            {unreadMessages > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold" style={{ background: '#dc2626', fontSize: 9 }}>
+                {unreadMessages > 9 ? '9+' : unreadMessages}
+              </span>
+            )}
+          </div>
+          <span style={{ fontSize: 10 }}>Messages</span>
+        </Link>
+
+        {/* Alerts */}
+        <div className="relative flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl"
+          style={{ color: 'var(--text-muted)', minWidth: 52 }}>
+          <div className="relative">
+            <Bell className="w-5 h-5" />
+            {unreadNotifs > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold" style={{ background: '#dc2626', fontSize: 9 }}>
+                {unreadNotifs > 9 ? '9+' : unreadNotifs}
+              </span>
+            )}
+          </div>
+          <span style={{ fontSize: 10 }}>Alerts</span>
+        </div>
+
+        {/* More */}
+        <button onClick={() => setDrawerOpen(true)}
+          className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl"
+          style={{ color: 'var(--text-muted)', minWidth: 52 }}>
+          <MoreHorizontal className="w-5 h-5" />
+          <span style={{ fontSize: 10 }}>More</span>
+        </button>
       </nav>
 
       {/* Full screen drawer */}
       {drawerOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex flex-col" style={{ background: 'var(--content-bg)' }}>
-          {/* Drawer header */}
           <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--card-border)' }}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm" style={{ background: 'var(--accent)' }}>
@@ -125,7 +123,6 @@ export default function MobileNav({ user, notifications, messageThreads }: Props
             </button>
           </div>
 
-          {/* Departments */}
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-secondary)' }}>Departments</p>
             {DEPARTMENTS.map(d => {
