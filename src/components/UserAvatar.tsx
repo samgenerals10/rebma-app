@@ -1,39 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useAppStore } from '@/lib/store'
 import Link from 'next/link'
 
 export function UserAvatar() {
-  const [user, setUser] = useState<any>(null)
-  const [cacheBust, setCacheBust] = useState(Date.now())
+  const { user } = useAppStore()
 
-  const loadUser = useCallback(async () => {
-    const supabase = createClient()
-    const { data: { user: auth } } = await supabase.auth.getUser()
-    if (auth) {
-      const { data } = await supabase
-        .from('users')
-        .select('full_name, avatar_url, role')
-        .eq('id', auth.id)
-        .single()
-      if (data) {
-        setUser(data)
-        setCacheBust(Date.now())
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    loadUser()
-    const handler = () => {
-      setTimeout(() => loadUser(), 500)
-    }
-    window.addEventListener('profile-updated', handler)
-    return () => window.removeEventListener('profile-updated', handler)
-  }, [loadUser])
-
-  const avatarUrl = user?.avatar_url ? `${user.avatar_url}?t=${cacheBust}` : null
+  const avatarUrl = user?.avatar_url ? `${user.avatar_url}?t=${Date.now()}` : null
 
   return (
     <Link

@@ -80,11 +80,11 @@ export default function OrdersTable({ orders }: { orders: any[] }) {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
   const [viewStepperOrder, setViewStepperOrder] = useState<any | null>(null)
 
-  const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter)
+  const filtered = filter === 'all' ? orders : filter === 'pending' ? orders.filter(o => o.status?.startsWith('pending')) : orders.filter(o => o.status === filter)
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  const filters = ['all', 'pending', 'confirmed', 'processing', 'dispatched', 'delivered']
+  const filters = ['all', 'pending', 'approved', 'processing', 'dispatched', 'delivered']
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}>
@@ -176,8 +176,8 @@ export default function OrdersTable({ orders }: { orders: any[] }) {
                     </button>
                   </td>
                   <td className="px-5 py-3.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    {new Date(order.created_at).toLocaleDateString("en-GB")}<br />
-                    <span>{new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span suppressHydrationWarning>{new Date(order.created_at).toLocaleDateString("en-GB")}</span><br />
+                    <span suppressHydrationWarning>{new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2 transition-all duration-200" style={{ opacity: isHovered ? 1 : 0 }}>

@@ -1,22 +1,43 @@
 'use client'
 import { createClient } from '@/lib/supabase/client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { CheckCircle, X, CreditCard, Smartphone, Banknote, Clock, ChevronDown, ChevronUp, AlertCircle, FileText, Printer } from 'lucide-react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { CheckCircle, X, CreditCard, Smartphone, Banknote, Clock, ChevronDown, ChevronUp, AlertCircle, FileText, Printer, Factory, DollarSign, Plus, BarChart2, Navigation } from 'lucide-react'
 import OrderStepper from '@/components/OrderStepper'
 import RejectionModal from '@/components/finance/RejectionModal'
 import PaymentForm from '@/components/finance/PaymentForm'
 
-export default function FinanceDashboardClient({ orders: initialOrders, payments, currentUser }: { orders: any[], payments: any[], currentUser: any }) {
+export default function FinanceDashboardClient({ orders: initialOrders, payments, priceUpdates, repackJobs: initialRepackJobs, currentUser }: { orders: any[], payments: any[], priceUpdates: any[], repackJobs?: any[], currentUser: any }) {
   const supabase = createClient()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const activeTab = searchParams.get('tab') || 'pending'
+  const setActiveTab = (tab: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', tab)
+    router.push(`?${params.toString()}`, { scroll: false })
+  }
+
   const [orders, setOrders] = useState(initialOrders)
+  const [repackJobs, setRepackJobs] = useState<any[]>(initialRepackJobs || [])
   const [activeOrder, setActiveOrder] = useState<string | null>(null)
   const [processing, setProcessing] = useState<string | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const [rejectingOrder, setRejectingOrder] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending')
 
-  // Payment fields
+  useEffect(() => {
+    setOrders(initialOrders)
+  }, [initialOrders])
+
+  useEffect(() => {
+    setRepackJobs(initialRepackJobs || [])
+  }, [initialRepackJobs])
+
+  useEffect(() => {
+    loadOrders()
+  }, [])
+
   const [cashAmount, setCashAmount] = useState('')
   const [chequeNumber, setChequeNumber] = useState('')
   const [chequeDate, setChequeDate] = useState('')
@@ -40,9 +61,16 @@ export default function FinanceDashboardClient({ orders: initialOrders, payments
     const { data } = await supabase
       .from('orders')
       .select('*, customers(*), order_items(*, products(name, sku))')
-      .in('status', ['pending_finance', 'pending_manager', 'approved', 'rejected'])
+      .in('status', ['pending', 'pending_finance', 'pending_manager', 'approved', 'rejected'])
       .order('created_at', { ascending: false })
     if (data) setOrders(data)
+
+    const { data: prodData } = await supabase
+      .from('repack_jobs')
+      .select('*')
+      .eq('status', 'pending_finance')
+      .order('created_at', { ascending: false })
+    if (prodData) setRepackJobs(prodData)
   }
 
   const uploadFile = async (file: File, path: string) => {
@@ -92,6 +120,17 @@ export default function FinanceDashboardClient({ orders: initialOrders, payments
     await loadOrders()
   }
 
+  const approveProductionRequest = async (job: any) => {
+    setProcessing(job.id)
+    await supabase.from('repack_jobs').update({ status: 'pending_operations' }).eq('id', job.id)
+    await supabase.from('notifications').insert([
+      { recipient_department: 'operations', sender_id: currentUser.id, title: 'Production Request Approved', body: `Finance approved raw materials for ${job.batch_number}. Please issue goods.`, type: 'production_request', reference_id: job.id, is_read: false },
+      { recipient_department: 'production', sender_id: currentUser.id, title: 'Request Approved by Finance', body: `Finance approved ${job.batch_number}. Waiting for Operations to issue goods.`, type: 'production_request', reference_id: job.id, is_read: false }
+    ])
+    setProcessing(null)
+    await loadOrders()
+  }
+
   const rejectOrder = async () => {
     if (!rejectingOrder) return
     if (!rejectionReason.trim()) { alert('Please enter a rejection reason'); return }
@@ -110,7 +149,7 @@ export default function FinanceDashboardClient({ orders: initialOrders, payments
     return { icon: Banknote, color: '#059669', label: mode || 'Cash' }
   }
 
-  const pendingOrders = orders.filter(o => o.status === 'pending_finance' || o.status === 'pending_manager')
+  const pendingOrders = orders.filter(o => o.status === 'pending_finance' || o.status === 'pending_manager' || o.status === 'pending')
   const approvedOrders = orders.filter(o => o.status === 'approved')
   const rejectedOrders = orders.filter(o => o.status === 'rejected')
   const displayedOrders = activeTab === 'pending' ? pendingOrders : activeTab === 'approved' ? approvedOrders : rejectedOrders
@@ -132,34 +171,74 @@ export default function FinanceDashboardClient({ orders: initialOrders, payments
       )}
 
       <div className="lg:col-span-2">
-        <div className="flex gap-2 mb-4">
-          {[
-            { key: 'pending', label: 'Pending', count: pendingOrders.length, color: '#dc2626' },
-            { key: 'approved', label: 'Approved', count: approvedOrders.length, color: '#059669' },
-            { key: 'rejected', label: 'Rejected', count: rejectedOrders.length, color: '#6b7280' },
-          ].map(tab => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition"
-              style={{ background: activeTab === tab.key ? tab.color : 'var(--card-bg)', color: activeTab === tab.key ? 'white' : 'var(--text-secondary)', border: '1px solid ' + (activeTab === tab.key ? tab.color : 'var(--card-border)') }}>
-              {tab.label}
-              <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: activeTab === tab.key ? 'rgba(255,255,255,0.2)' : 'var(--table-header-bg)' }}>
-                {tab.count}
-              </span>
-            </button>
-          ))}
-        </div>
-
         <div className="space-y-3">
-          {displayedOrders.length === 0 && (
+          {(activeTab === 'production' ? repackJobs.length === 0 : displayedOrders.length === 0) && (
             <div className="rounded-xl p-10 text-center" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}>
               <CheckCircle className="w-10 h-10 mx-auto mb-3" style={{ color: '#059669' }} />
               <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                {activeTab === 'pending' ? 'All caught up — no pending orders' : activeTab === 'approved' ? 'No approved orders yet' : 'No rejected orders'}
+                {activeTab === 'pending' ? 'All caught up — no pending orders' : activeTab === 'approved' ? 'No approved orders yet' : activeTab === 'production' ? 'No pending production requests' : 'No rejected orders'}
               </p>
             </div>
           )}
 
-          {displayedOrders.map(order => {
+          {activeTab === 'production' && repackJobs.map(job => (
+            <div key={job.id} className="rounded-xl overflow-hidden p-5 flex items-center justify-between" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)', border: '1px solid var(--card-border)', borderLeft: '4px solid #8b5cf6' }}>
+              <div>
+                <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{job.batch_number}</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Requesting: {job.input_qty} of {job.source_product}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Expected Output: {job.output_qty_expected} ({job.target_pack})</p>
+              </div>
+              <button 
+                onClick={() => approveProductionRequest(job)}
+                disabled={processing === job.id}
+                className="px-4 py-2 rounded-lg text-sm font-bold bg-emerald-50 text-emerald-600 hover:bg-emerald-100 disabled:opacity-50 transition"
+              >
+                {processing === job.id ? 'Approving...' : 'Approve Request'}
+              </button>
+            </div>
+          ))}
+
+          {activeTab === 'prices' && (
+            <div className="space-y-3">
+              {priceUpdates.map((update: any) => {
+                const stockQty = update.products?.stock?.reduce((s: number, st: any) => s + (st.quantity || 0), 0) || 0
+                return (
+                  <div key={update.id} className="rounded-xl overflow-hidden p-5" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)', border: '1px solid var(--card-border)', borderLeft: '4px solid #1a73e8' }}>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{update.product_name}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>SKU: {update.products?.sku} · Set by {update.users?.full_name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold" style={{ color: '#059669' }}>GH₵{parseFloat(update.selling_price).toFixed(2)}</p>
+                        <p className="text-[10px] uppercase tracking-wider font-semibold mt-0.5" style={{ color: 'var(--text-secondary)' }}>New Price</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-3 flex items-center justify-between border-t border-dashed" style={{ borderColor: 'var(--card-border)' }}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#05966915' }}>
+                          <CheckCircle className="w-4 h-4" style={{ color: '#059669' }} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{stockQty} Units</p>
+                          <p className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>Current Stock Level</p>
+                        </div>
+                      </div>
+                      <p className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>{new Date(update.created_at).toLocaleString('en-GB')}</p>
+                    </div>
+                  </div>
+                )
+              })}
+              {priceUpdates.length === 0 && (
+                <div className="rounded-xl p-10 text-center" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}>
+                  <Clock className="w-10 h-10 mx-auto mb-3 opacity-20" style={{ color: 'var(--text-secondary)' }} />
+                  <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>No recent price updates</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab !== 'production' && displayedOrders.map(order => {
             const isActive = activeOrder === order.id
             const { icon: Icon, color, label } = getPaymentConfig(order.payment_mode)
             const isPending = order.status === 'pending_finance' || order.status === 'pending_manager'
@@ -192,12 +271,12 @@ export default function FinanceDashboardClient({ orders: initialOrders, payments
                       </div>
                       <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                         <Link href={'/dashboard/marketing/customers/' + order.customers?.id} className="font-medium hover:underline" style={{ color: 'var(--accent)' }}>{order.customers?.name}</Link>
-                        {' · ' + new Date(order.created_at).toLocaleDateString('en-GB')}
+                        {' · ' + new Date(order.created_at).toLocaleString('en-GB', { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
-                    <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>GH₵{parseFloat(order.total_amount).toLocaleString()}</p>
+                    <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>GH₵{parseFloat(order.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     {isPending && !isPendingManager && (
                       <button onClick={() => { setActiveOrder(isActive ? null : order.id); resetFields() }}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
@@ -210,7 +289,7 @@ export default function FinanceDashboardClient({ orders: initialOrders, payments
 
                 <div className="px-5 pb-3 flex flex-wrap gap-2">
                   {order.order_items?.map((item: any, i: number) => (
-                    <span key={i} className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--table-header-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}>
+                    <span key={item.id || item.product_id || i} className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--table-header-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}>
                       {item.products?.name} × {item.quantity} @ GH₵{parseFloat(item.unit_price).toFixed(2)}
                     </span>
                   ))}
@@ -268,7 +347,7 @@ export default function FinanceDashboardClient({ orders: initialOrders, payments
             <div key={payment.id} className="px-4 py-3 flex items-center justify-between" style={{ borderTop: i > 0 ? '1px solid var(--card-border)' : 'none' }}>
               <div>
                 <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{payment.order_id?.slice(0, 8) || 'N/A'}</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{new Date(payment.created_at).toLocaleDateString('en-GB')}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{new Date(payment.created_at).toLocaleDateString('en-GB', { timeZone: 'UTC' })}</p>
               </div>
               <div className="text-right">
                 <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>GH₵{parseFloat(payment.amount).toFixed(2)}</p>

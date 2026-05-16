@@ -93,6 +93,34 @@ export async function POST(request: Request) {
       .eq('id', authUserId)
   }
 
+  // Ensure employee record exists
+  const { data: existingEmployee } = await adminSupabase
+    .from('employees')
+    .select('id')
+    .eq('user_id', authUserId)
+    .single()
+
+  if (!existingEmployee) {
+    await adminSupabase
+      .from('employees')
+      .insert({
+        user_id: authUserId,
+        employee_number: `REB-${Math.floor(1000 + Math.random() * 9000)}`,
+        department: department || reg.department_requested,
+        position: role || reg.role_requested || 'Staff',
+        is_active: true
+      })
+  } else {
+    await adminSupabase
+      .from('employees')
+      .update({
+        department: department || reg.department_requested,
+        position: role || reg.role_requested || 'Staff',
+        is_active: true
+      })
+      .eq('user_id', authUserId)
+  }
+
   await adminSupabase
     .from('registrations')
     .update({

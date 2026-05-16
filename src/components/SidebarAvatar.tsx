@@ -1,30 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useAppStore } from '@/lib/store'
 
 export function SidebarAvatar({ userRole, userDepartment }: { userRole: string; userDepartment: string }) {
-  const [user, setUser] = useState<any>(null)
-
-  const loadUser = useCallback(async () => {
-    const supabase = createClient()
-    const { data: { user: auth } } = await supabase.auth.getUser()
-    if (auth) {
-      const { data } = await supabase
-        .from('users')
-        .select('full_name, avatar_url, role, department')
-        .eq('id', auth.id)
-        .single()
-      if (data) setUser(data)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadUser()
-    const handler = () => setTimeout(() => loadUser(), 500)
-    window.addEventListener('profile-updated', handler)
-    return () => window.removeEventListener('profile-updated', handler)
-  }, [loadUser])
+  const { user } = useAppStore()
 
   return (
     <div className="flex items-center gap-3 px-3 py-2 mt-1 rounded-lg" style={{ background: 'transparent' }}>

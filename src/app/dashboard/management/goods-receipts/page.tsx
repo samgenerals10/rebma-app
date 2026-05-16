@@ -168,7 +168,7 @@ export default async function GoodsReceiptsPage() {
           { label: 'Approved', value: approved.length, color: '#059669', bg: '#05966915' },
           { label: 'Rejected', value: rejected.length, color: '#dc2626', bg: '#dc262615' },
         ].map((s, i) => (
-          <div key={i} className="rounded-xl p-5" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}>
+          <div key={i} className={`rounded-xl p-5 ${s.label === 'Pending' && s.value > 0 ? 'animate-attention' : ''}`} style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}>
             <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
             <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{s.label}</p>
           </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, ChevronDown, Settings } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface Column {
   key: string
@@ -17,7 +17,19 @@ interface DataTableProps {
   actions?: (row: any) => React.ReactNode
 }
 
-function Pagination({ current, total, onChange }: { current: number; total: number; onChange: (p: number) => void }) {
+function Pagination({
+  current,
+  total,
+  dataLength,
+  pageSize,
+  onChange,
+}: {
+  current: number
+  total: number
+  dataLength: number
+  pageSize: number
+  onChange: (p: number) => void
+}) {
   if (total <= 1) return null
 
   const getPages = () => {
@@ -34,10 +46,14 @@ function Pagination({ current, total, onChange }: { current: number; total: numb
     return pages
   }
 
+  // Fix: calculate the correct item range, not total * pageSize
+  const startItem = (current - 1) * pageSize + 1
+  const endItem = Math.min(current * pageSize, dataLength)
+
   return (
     <div className="flex items-center justify-between px-5 py-4" style={{ borderTop: '1px solid var(--card-border)' }}>
       <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-        Showing {(current - 1) * 10 + 1}–{Math.min(current * 10, total * 10)} results
+        Showing {startItem}–{endItem} of {dataLength} results
       </p>
       <div
         className="flex items-center gap-1 px-3 py-1.5 rounded-2xl"
@@ -48,6 +64,7 @@ function Pagination({ current, total, onChange }: { current: number; total: numb
           disabled={current === 1}
           className="w-7 h-7 flex items-center justify-center rounded-full transition disabled:opacity-30"
           style={{ color: 'var(--text-secondary)' }}
+          aria-label="Previous page"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -64,6 +81,8 @@ function Pagination({ current, total, onChange }: { current: number; total: numb
                 color: current === page ? 'white' : 'var(--text-secondary)',
                 fontWeight: current === page ? 700 : 500,
               }}
+              aria-label={`Page ${page}`}
+              aria-current={current === page ? 'page' : undefined}
             >
               {page}
             </button>
@@ -74,6 +93,7 @@ function Pagination({ current, total, onChange }: { current: number; total: numb
           disabled={current === total}
           className="w-7 h-7 flex items-center justify-center rounded-full transition disabled:opacity-30"
           style={{ color: 'var(--text-secondary)' }}
+          aria-label="Next page"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -98,9 +118,9 @@ export default function DataTable({ title, data, columns, pageSize = 10, actions
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
+      {/* Table — horizontally scrollable on mobile */}
+      <div className="overflow-x-auto -webkit-overflow-scrolling-touch">
+        <table className="w-full" style={{ minWidth: 480 }}>
           <thead>
             <tr style={{ background: 'var(--table-header-bg)' }}>
               {columns.map(col => (
@@ -121,7 +141,7 @@ export default function DataTable({ title, data, columns, pageSize = 10, actions
                 key={row.id || i}
                 onMouseEnter={() => setHoveredRow(row.id || String(i))}
                 onMouseLeave={() => setHoveredRow(null)}
-                className="transition-all duration-150"
+                className="transition-colors duration-150"
                 style={{
                   borderTop: '1px solid var(--card-border)',
                   background: hoveredRow === (row.id || String(i)) ? 'color-mix(in srgb, var(--accent) 4%, var(--card-bg))' : 'var(--card-bg)',
@@ -135,7 +155,7 @@ export default function DataTable({ title, data, columns, pageSize = 10, actions
                 {actions && (
                   <td className="px-5 py-3.5">
                     <div
-                      className="flex items-center gap-2 transition-all duration-200"
+                      className="flex items-center gap-2 transition-opacity duration-200"
                       style={{ opacity: hoveredRow === (row.id || String(i)) ? 1 : 0.4 }}
                     >
                       {actions(row)}
@@ -155,7 +175,13 @@ export default function DataTable({ title, data, columns, pageSize = 10, actions
         </table>
       </div>
 
-      <Pagination current={page} total={totalPages} onChange={setPage} />
+      <Pagination
+        current={page}
+        total={totalPages}
+        dataLength={data.length}
+        pageSize={pageSize}
+        onChange={setPage}
+      />
     </div>
   )
 }

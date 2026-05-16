@@ -326,7 +326,7 @@ export default function GoodsReceiptPage() {
                       {result.failed === 0 ? 'All Pass' : result.failed + ' Failed'}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium mb-1" style={{ color: '#059669' }}>Units Passed</label>
                       <input type="number" value={result.passed} min="0" max={result.qty} onChange={e => updateQc(i, 'passed', e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: 'var(--input-bg)', border: '1px solid #059669', color: 'var(--text-primary)' }} />
@@ -359,7 +359,7 @@ export default function GoodsReceiptPage() {
             <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Summary & Confirm</h3>
             <div className="rounded-lg p-4" style={{ background: 'var(--table-header-bg)', border: '1px solid var(--card-border)' }}>
               <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-secondary)' }}>Receipt Details</p>
-              <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="grid grid-cols-2 gap-2 text-sm overflow-hidden">
                 <span style={{ color: 'var(--text-secondary)' }}>PO Number</span><span style={{ color: 'var(--text-primary)' }}>{poNumber || '—'}</span>
                 <span style={{ color: 'var(--text-secondary)' }}>Supplier</span><span style={{ color: 'var(--text-primary)' }}>{supplier}</span>
                 <span style={{ color: 'var(--text-secondary)' }}>Date / Time</span><span style={{ color: 'var(--text-primary)' }}>{dateTime}</span>
@@ -370,7 +370,7 @@ export default function GoodsReceiptPage() {
             </div>
             <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--card-border)' }}>
               <p className="text-xs font-semibold uppercase tracking-wider px-4 py-2" style={{ color: 'var(--text-secondary)', background: 'var(--table-header-bg)' }}>Items & QC Results</p>
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm" style={{ minWidth: 400 }}>
                 <thead>
                   <tr style={{ background: 'var(--table-header-bg)', borderBottom: '1px solid var(--card-border)' }}>
                     <th className="text-left px-4 py-2 text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Product</th>
@@ -394,7 +394,7 @@ export default function GoodsReceiptPage() {
                     )
                   })}
                 </tbody>
-              </table>
+              </table></div>
             </div>
             {qcResults.some(r => r.failed > 0) && (
               <div className="rounded-lg p-4" style={{ background: '#dc262610', border: '1px solid #dc2626' }}>

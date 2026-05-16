@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ShoppingCart, Users, Plus, Phone, MapPin } from 'lucide-react'
+import { ShoppingCart, Users, Plus, Phone, MapPin, Navigation } from 'lucide-react'
 
 export default async function MarketingDashboard() {
   const supabase = await createClient()
@@ -52,41 +52,14 @@ export default async function MarketingDashboard() {
 
   return (
     <div>
-      {/* Header with actions at top */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Marketing & Sales</h2>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Customers, orders and revenue</p>
         </div>
-        <div className="flex gap-3">
-          <Link
-            href="/dashboard/marketing/orders/new"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
-            style={{ background: 'var(--accent)', color: 'white' }}
-          >
-            <Plus className="w-4 h-4" />
-            New Order
-          </Link>
-          <Link
-            href="/dashboard/marketing/customers/new"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-80"
-            style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}
-          >
-            <Plus className="w-4 h-4" />
-            Add Customer
-          </Link>
-        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {stats.map((stat, i) => (
-          <div key={i} className="rounded-xl p-5" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}>
-            <p className="text-2xl font-bold" style={{ color: stat.color }}>{stat.value}</p>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{stat.label}</p>
-          </div>
-        ))}
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Customers */}
@@ -189,35 +162,8 @@ export default async function MarketingDashboard() {
         </div>
       </div>
 
-      {/* Quick Links */}
-      <div className="mt-6 grid grid-cols-2 gap-4">
-        <Link
-          href="/dashboard/marketing/orders"
-          className="flex items-center gap-3 p-4 rounded-xl transition hover:opacity-80"
-          style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}
-        >
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: '#f59e0b15' }}>
-            <ShoppingCart className="w-4 h-4" style={{ color: '#f59e0b' }} />
-          </div>
-          <div>
-            <p className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>All Orders</p>
-            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>View and manage orders</p>
-          </div>
-        </Link>
-        <Link
-          href="/dashboard/marketing/customers"
-          className="flex items-center gap-3 p-4 rounded-xl transition hover:opacity-80"
-          style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}
-        >
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: '#1a73e815' }}>
-            <Users className="w-4 h-4" style={{ color: '#1a73e8' }} />
-          </div>
-          <div>
-            <p className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>Customer Directory</p>
-            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>View all customers</p>
-          </div>
-        </Link>
-      </div>
+
+
     </div>
   )
 }

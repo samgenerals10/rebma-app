@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Package, AlertTriangle, TrendingDown, TrendingUp, Warehouse } from 'lucide-react'
+import { Package, AlertTriangle, TrendingDown, TrendingUp, Warehouse, Navigation } from 'lucide-react'
 import OrdersToPrep from '@/components/operations/OrdersToPrep'
+import OperationsTabs from '@/components/operations/OperationsTabs'
+import ProductionRequestsOperations from '@/components/operations/ProductionRequestsOperations'
 
 export default async function OperationsDashboard() {
   const supabase = await createClient()
@@ -24,38 +26,37 @@ export default async function OperationsDashboard() {
     .select('*, customers(*), order_items(*, products(name, sku, unit_of_measure))')
     .in('status', ['approved', 'preparing', 'ready_for_dispatch', 'dispatched', 'delivered'])
     .order('created_at', { ascending: false })
+  const { data: receipts } = await supabase
+    .from('goods_receipts')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(5)
+  const { data: productionRequests } = await supabase
+    .from('repack_jobs')
+    .select('*')
+    .eq('status', 'pending_operations')
+    .order('created_at', { ascending: false })
 
   const stockMap = new Map(stock?.map(s => [s.product_id, s]) || [])
   const lowStockCount = products?.filter(p => (stockMap.get(p.id)?.quantity || 0) <= (p.reorder_level || 0)).length || 0
   const totalStock = stock?.reduce((sum, s) => sum + (s.quantity || 0), 0) || 0
   const pendingPrep = orders?.filter(o => o.status === 'approved').length || 0
+  const pendingProdReqs = productionRequests?.length || 0
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Operations</h2>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Orders, inventory and stock movements</p>
         </div>
-        <div className="flex gap-3">
-          <Link href="/dashboard/operations/receive"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
-            style={{ background: 'var(--accent)', color: 'white' }}>
-            <Package className="w-4 h-4" /> Goods Receipt
-          </Link>
-          <Link href="/dashboard/operations/suppliers"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-80"
-            style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
-            <Warehouse className="w-4 h-4" /> Suppliers
-          </Link>
-        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Orders to Prepare', value: pendingPrep, icon: Package, color: pendingPrep > 0 ? '#dc2626' : '#059669', bg: pendingPrep > 0 ? '#dc262615' : '#05966915' },
-          { label: 'Total Stock Units', value: totalStock.toLocaleString(), icon: Warehouse, color: '#059669', bg: '#05966915' },
+          { label: 'Production Requests', value: pendingProdReqs, icon: Warehouse, color: pendingProdReqs > 0 ? '#8b5cf6' : '#6b7280', bg: pendingProdReqs > 0 ? '#8b5cf615' : '#f3f4f6' },
           { label: 'Low Stock Alerts', value: lowStockCount, icon: AlertTriangle, color: '#dc2626', bg: '#dc262615' },
           { label: 'Total Products', value: products?.length || 0, icon: TrendingUp, color: '#1a73e8', bg: '#1a73e815' },
         ].map((stat, i) => (
@@ -72,78 +73,16 @@ export default async function OperationsDashboard() {
       {/* Orders to Prepare */}
       <OrdersToPrep orders={orders || []} currentUser={currentUser} />
 
-      {/* Inventory + Movements */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}>
-          <div className="px-5 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--card-border)' }}>
-            <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Live Inventory</h2>
-            <Link href="/dashboard/operations/receive" className="text-sm font-medium" style={{ color: 'var(--accent)' }}>+ Receive Goods</Link>
-          </div>
-          <table className="w-full">
-            <thead>
-              <tr style={{ background: 'var(--table-header-bg)' }}>
-                {['Product', 'SKU', 'Qty', 'Reorder'].map(h => (
-                  <th key={h} className="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-left last:text-right" style={{ color: 'var(--text-secondary)' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {products?.map((product, i) => {
-                const stockItem = stockMap.get(product.id)
-                const qty = stockItem?.quantity || 0
-                const isLow = qty <= (product.reorder_level || 0)
-                return (
-                  <tr key={product.id} style={{ borderTop: i > 0 ? '1px solid var(--card-border)' : 'none' }}>
-                    <td className="px-5 py-3">
-                      <p className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{product.name}</p>
-                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{product.category}</p>
-                    </td>
-                    <td className="px-5 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{product.sku}</td>
-                    <td className="px-5 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {isLow && <AlertTriangle className="w-3.5 h-3.5" style={{ color: '#dc2626' }} />}
-                        <span className="font-bold text-sm" style={{ color: isLow ? '#dc2626' : '#059669' }}>{qty}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 text-right text-sm" style={{ color: 'var(--text-secondary)' }}>{product.reorder_level || 0}</td>
-                  </tr>
-                )
-              })}
-              {(!products || products.length === 0) && (
-                <tr><td colSpan={4} className="px-5 py-8 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>No products found</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* Production Requests */}
+      <ProductionRequestsOperations requests={productionRequests || []} currentUser={currentUser} />
 
-        <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}>
-          <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--card-border)' }}>
-            <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Recent Stock Movements</h2>
-          </div>
-          <div>
-            {recentMovements?.map((movement, i) => (
-              <div key={i} className="px-5 py-4 flex items-center justify-between" style={{ borderTop: i > 0 ? '1px solid var(--card-border)' : 'none' }}>
-                <div>
-                  <p className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{movement.reference_type || 'Stock Movement'}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{new Date(movement.created_at).toLocaleDateString('en-GB')}</p>
-                  {movement.notes && <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{movement.notes}</p>}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {movement.quantity_change >= 0
-                    ? <TrendingUp className="w-4 h-4" style={{ color: '#059669' }} />
-                    : <TrendingDown className="w-4 h-4" style={{ color: '#dc2626' }} />}
-                  <span className="font-bold text-sm" style={{ color: movement.quantity_change >= 0 ? '#059669' : '#dc2626' }}>
-                    {movement.quantity_change >= 0 ? '+' : ''}{movement.quantity_change}
-                  </span>
-                </div>
-              </div>
-            ))}
-            {(!recentMovements || recentMovements.length === 0) && (
-              <div className="px-5 py-8 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>No stock movements yet</div>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Tabbed Interface for Receipts, Inventory, and Movements */}
+      <OperationsTabs 
+        receipts={receipts || []} 
+        products={products || []} 
+        stockMap={stockMap} 
+        recentMovements={recentMovements || []} 
+      />
     </div>
   )
 }

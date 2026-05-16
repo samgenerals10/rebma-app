@@ -6,11 +6,14 @@ import { createClient } from '@/lib/supabase/client'
 import Sidebar, { ThemeToggle, NotificationBell, MessagingSystem } from '@/components/Sidebar'
 import { useSidebar } from '@/components/SidebarContext'
 import { UserAvatar } from '@/components/UserAvatar'
+import { GlobalSearch } from '@/components/GlobalSearch'
+import MobileNav from '@/components/MobileNav'
+import { useAppStore } from '@/lib/store'
 import Link from 'next/link'
 import {
   ChevronRight, ChevronLeft, Bell, Clock,
   AlertTriangle, CheckCircle, Search, Settings, LogOut, Home,
-  MessageCircle, Info, Package, ChevronDown, ChevronUp, X
+  MessageCircle, Info, Package, ChevronDown, ChevronUp, X, DollarSign
 } from 'lucide-react'
 
 const ROUTE_NAMES: Record<string, string> = {
@@ -40,7 +43,9 @@ function getBreadcrumbs(pathname: string) {
   let path = ''
   for (let i = 0; i < segments.length; i++) {
     path += `/${segments[i]}`
-    const name = ROUTE_NAMES[segments[i]] || segments[i].charAt(0).toUpperCase() + segments[i].slice(1)
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segments[i])
+    let name = ROUTE_NAMES[segments[i]] || segments[i].charAt(0).toUpperCase() + segments[i].slice(1)
+    if (isUUID) name = 'Profile / Details'
     crumbs.push({ name, path })
   }
   return crumbs
@@ -49,6 +54,8 @@ function getBreadcrumbs(pathname: string) {
 function getPageTitle(pathname: string) {
   const segments = pathname.split('/').filter(Boolean)
   const last = segments[segments.length - 1]
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(last)
+  if (isUUID) return 'Profile / Details'
   return ROUTE_NAMES[last] || last.charAt(0).toUpperCase() + last.slice(1)
 }
 
@@ -67,14 +74,9 @@ const ALL_QUICK_ACTIONS = [
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null)
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
+  const [mounted, setMounted] = useState(false)
+  const [isLargeScreen, setIsLargeScreen] = useState(false)
+  const [isMediumScreen, setIsMediumScreen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
   const [messageThreads, setMessageThreads] = useState<any[]>([])
   const [quickActions, setQuickActions] = useState<any[]>([])
@@ -84,9 +86,23 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const { isOpen } = useSidebar()
   const supabase = createClient()
 
+  const setStoreUser = useAppStore(s => s.setUser)
+  const setStoreNotifications = useAppStore(s => s.setNotifications)
+  const setStoreMessageThreads = useAppStore(s => s.setMessageThreads)
+
   useEffect(() => {
+    setMounted(true)
     const savedRight = localStorage.getItem('right_panel_open')
     if (savedRight !== null) setRightPanelOpen(savedRight === 'true')
+
+    // Track screen size for left and right panel margin guards
+    const checkSize = () => {
+      setIsLargeScreen(window.innerWidth >= 1024)
+      setIsMediumScreen(window.innerWidth >= 768)
+    }
+    checkSize()
+    window.addEventListener('resize', checkSize)
+
     loadData()
 
     const channel = supabase
@@ -95,8 +111,15 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => loadData())
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      window.removeEventListener('resize', checkSize)
+      supabase.removeChannel(channel)
+    }
   }, [])
+
+  useEffect(() => { setStoreUser(user) }, [user, setStoreUser])
+  useEffect(() => { setStoreNotifications(notifications) }, [notifications, setStoreNotifications])
+  useEffect(() => { setStoreMessageThreads(messageThreads) }, [messageThreads, setStoreMessageThreads])
 
   const loadData = async () => {
     const { data: { user: auth } } = await supabase.auth.getUser()
@@ -105,7 +128,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     setUser(userData)
     const dept = userData?.department
 
-    // Load notifications
     const { data: notifs } = await supabase
       .from('notifications')
       .select('*')
@@ -113,7 +135,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       .order('created_at', { ascending: false })
     if (notifs) setNotifications(notifs)
 
-    // Load message threads
     const { data: recipients } = await supabase
       .from('message_recipients')
       .select('thread_id')
@@ -129,7 +150,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       if (threadData) setMessageThreads(threadData)
     }
 
-    // Load quick actions
     const saved = userData?.quick_actions
     if (saved && Array.isArray(saved) && saved.length > 0) {
       setQuickActions(saved)
@@ -161,7 +181,8 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const leftWidth = isOpen ? 256 : 80
   const rightWidth = 280
   const hideRightPanel = pathname.startsWith('/dashboard/settings')
-  const showRight = rightPanelOpen && !hideRightPanel
+  // Only show right panel on large screens (≥1024px)
+  const showRight = rightPanelOpen && !hideRightPanel && mounted && isLargeScreen
   const breadcrumbs = getBreadcrumbs(pathname)
   const pageTitle = getPageTitle(pathname)
 
@@ -180,6 +201,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     if (type?.includes('rejected') || type?.includes('failed')) return { icon: AlertTriangle, color: '#dc2626' }
     if (type?.includes('message')) return { icon: MessageCircle, color: '#1a73e8' }
     if (type?.includes('receipt') || type?.includes('goods')) return { icon: Package, color: '#8b5cf6' }
+    if (type?.includes('price_update') || type?.includes('price')) return { icon: DollarSign, color: '#059669' }
     if (type?.includes('pending')) return { icon: Clock, color: '#f59e0b' }
     return { icon: Info, color: '#1a73e8' }
   }
@@ -204,7 +226,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return name + ': ' + last.body
   }
 
-  // Separate notifications from message notifications
   const nonMessageNotifs = notifications.filter(n => n.type !== 'message')
   const groupedNotifs = nonMessageNotifs.reduce((acc: Record<string, any[]>, notif) => {
     const key = notif.type || 'general'
@@ -213,14 +234,30 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return acc
   }, {})
 
-  return (
-    <div className="min-h-screen flex" style={{ background: 'var(--content-bg)' }}>
+  return (<div className="min-h-screen flex" style={{ background: 'var(--content-bg)' }}>
       <Sidebar userRole={role} userDepartment={department} />
 
-      <div className="flex flex-col flex-1 min-h-screen main-content-area" style={{ marginLeft: leftWidth, marginRight: showRight ? rightWidth : 0, transition: 'margin 0.3s ease' }}>
+      <div
+        className="flex flex-col flex-1 min-h-screen main-content-area"
+        style={{
+          // marginLeft: show sidebar offset on md+ screens only (mobile uses MobileNav)
+          // isMediumScreen is false until mount, so no hydration mismatch
+          marginLeft: mounted && !isMediumScreen ? 0 : leftWidth,
+          // marginRight only on large screens where right panel is visible
+          marginRight: showRight ? rightWidth : 0,
+          transition: mounted ? 'margin 0.3s ease' : 'none',
+        }}
+      >
 
-        <header className="sticky top-0 z-30 flex items-center gap-3 px-5"
-          style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--header-border)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', minHeight: 60 }}>
+        <header
+          className="hidden md:flex sticky top-0 z-30 items-center gap-3 px-5 print:hidden"
+          style={{
+            background: 'var(--header-bg)',
+            borderBottom: '1px solid var(--header-border)',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+            minHeight: 60,
+          }}
+        >
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-bold leading-tight truncate" style={{ color: 'var(--header-text)' }}>{pageTitle}</h1>
             <div className="flex items-center gap-1 mt-0.5 flex-wrap">
@@ -240,13 +277,8 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="flex-1 max-w-xs hidden md:flex">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--text-secondary)' }} />
-              <input type="text" placeholder="Search..." className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg outline-none"
-                style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }} />
-            </div>
-          </div>
+          {/* Predictive Global Search */}
+          <GlobalSearch user={user} />
 
           <div className="flex items-center gap-1 ml-auto">
             <ThemeToggle />
@@ -271,11 +303,42 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 overflow-auto">{children}</main>
+        <header
+          className="md:hidden sticky top-0 z-30 flex items-center gap-3 px-4 print:hidden"
+          style={{
+            background: 'var(--header-bg)',
+            borderBottom: '1px solid var(--header-border)',
+            minHeight: 56,
+          }}
+        >
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base font-bold leading-tight truncate" style={{ color: 'var(--header-text)' }}>
+              {pageTitle}
+            </h1>
+            {breadcrumbs.length > 1 && (
+              <div className="flex items-center gap-1 mt-0.5">
+                <Link href="/dashboard" className="flex items-center">
+                  <Home className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+                </Link>
+                {breadcrumbs.slice(1, -1).map(crumb => (
+                  <span key={crumb.path} className="flex items-center gap-1">
+                    <ChevronRight className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+                    <Link href={crumb.path} className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                      {crumb.name}
+                    </Link>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <UserAvatar />
+        </header>
+
+        <main className="flex-1 p-4 md:p-6 overflow-auto pt-20 md:pt-6">{children}</main>
       </div>
 
-      {!hideRightPanel && !isMobile && (
-        <button onClick={toggleRightPanel} className="fixed z-40 p-1.5 rounded-l-lg"
+      {!hideRightPanel && (
+        <button onClick={toggleRightPanel} className="hidden md:block fixed z-40 p-1.5 rounded-l-lg print:hidden"
           style={{ top: 70, right: showRight ? rightWidth : 0, background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRight: 'none', boxShadow: '-2px 0 6px rgba(0,0,0,0.06)', transition: 'right 0.3s ease' }}>
           {showRight
             ? <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--text-secondary)' }} />
@@ -284,8 +347,8 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       )}
 
       {!hideRightPanel && (
-        <aside className="fixed right-0 top-0 h-screen flex flex-col z-40"
-          style={{ width: isMobile ? 0 : (showRight ? rightWidth : 0), background: 'var(--card-bg)', borderLeft: showRight && !isMobile ? '1px solid var(--card-border)' : 'none', boxShadow: showRight && !isMobile ? '-2px 0 12px rgba(0,0,0,0.06)' : 'none', transition: 'width 0.3s ease', overflow: 'hidden' }}>
+        <aside className="hidden md:flex fixed right-0 top-0 h-screen flex-col z-40 print:hidden"
+          style={{ width: showRight ? rightWidth : 0, background: 'var(--card-bg)', borderLeft: showRight ? '1px solid var(--card-border)' : 'none', boxShadow: showRight ? '-2px 0 12px rgba(0,0,0,0.06)' : 'none', transition: 'width 0.3s ease', overflow: 'hidden' }}>
           <div className="flex flex-col h-full" style={{ width: rightWidth }}>
 
             <div className="px-4 py-3 flex items-center justify-between flex-shrink-0" style={{ borderBottom: '1px solid var(--card-border)', minHeight: 60 }}>
@@ -296,7 +359,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
             <div className="flex-1 overflow-y-auto">
               <div className="p-3 space-y-2">
 
-                {/* Notifications */}
                 {Object.keys(groupedNotifs).length > 0 && (
                   <>
                     <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-secondary)' }}>Notifications</p>
@@ -308,7 +370,15 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
                       return (
                         <div key={type} className="rounded-lg overflow-hidden mb-2" style={{ border: '1px solid var(--card-border)' }}>
-                          <div className="flex items-start gap-2 p-2.5">
+                          <div 
+                            onClick={async () => {
+                              if (!latest.is_read) {
+                                await supabase.from('notifications').update({ is_read: true }).eq('id', latest.id)
+                                loadData()
+                              }
+                            }}
+                            className="flex items-start gap-2 p-2.5 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition"
+                          >
                             <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: color + '20' }}>
                               <Icon className="w-3 h-3" style={{ color }} />
                             </div>
@@ -317,7 +387,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
                               {latest.body && <p className="text-xs mt-0.5 line-clamp-1" style={{ color: 'var(--text-secondary)' }}>{latest.body}</p>}
                               <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{timeAgo(latest.created_at)}</p>
                             </div>
-                            {!latest.is_read && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1" style={{ background: 'var(--accent)' }} />}
+                            {!latest.is_read && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1 shadow-sm" style={{ background: 'var(--accent)' }} />}
                           </div>
                           {showAccordion && (
                             <>
@@ -328,7 +398,17 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
                                 {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                               </button>
                               {isExpanded && items.slice(1).map((item, i) => (
-                                <div key={i} className="flex items-start gap-2 p-2.5" style={{ borderTop: '1px solid var(--card-border)' }}>
+                                <div 
+                                  key={i} 
+                                  onClick={async () => {
+                                    if (!item.is_read) {
+                                      await supabase.from('notifications').update({ is_read: true }).eq('id', item.id)
+                                      loadData()
+                                    }
+                                  }}
+                                  className="flex items-start gap-2 p-2.5 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition" 
+                                  style={{ borderTop: '1px solid var(--card-border)' }}
+                                >
                                   <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: color + '20' }}>
                                     <Icon className="w-3 h-3" style={{ color }} />
                                   </div>
@@ -336,12 +416,23 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
                                     <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{item.title}</p>
                                     <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{timeAgo(item.created_at)}</p>
                                   </div>
+                                  {!item.is_read && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1 shadow-sm" style={{ background: 'var(--accent)' }} />}
                                 </div>
                               ))}
                             </>
                           )}
                           {!showAccordion && items.slice(1).map((item, i) => (
-                            <div key={i} className="flex items-start gap-2 p-2.5" style={{ borderTop: '1px solid var(--card-border)' }}>
+                            <div 
+                              key={i} 
+                              onClick={async () => {
+                                if (!item.is_read) {
+                                  await supabase.from('notifications').update({ is_read: true }).eq('id', item.id)
+                                  loadData()
+                                }
+                              }}
+                              className="flex items-start gap-2 p-2.5 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition" 
+                              style={{ borderTop: '1px solid var(--card-border)' }}
+                            >
                               <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: color + '20' }}>
                                 <Icon className="w-3 h-3" style={{ color }} />
                               </div>
@@ -349,6 +440,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
                                 <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{item.title}</p>
                                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{timeAgo(item.created_at)}</p>
                               </div>
+                              {!item.is_read && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1 shadow-sm" style={{ background: 'var(--accent)' }} />}
                             </div>
                           ))}
                         </div>
@@ -357,7 +449,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
                   </>
                 )}
 
-                {/* Messages */}
                 {messageThreads.length > 0 && (
                   <>
                     <p className="text-xs font-semibold uppercase tracking-wider mt-2 mb-2" style={{ color: 'var(--text-secondary)' }}>Messages</p>
@@ -394,7 +485,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            {/* Quick Actions */}
             <div className="p-3 flex-shrink-0" style={{ borderTop: '1px solid var(--card-border)' }}>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Quick Actions</p>
@@ -438,6 +528,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
       )}
+
     </div>
   )
 }
@@ -445,4 +536,3 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return <LayoutInner>{children}</LayoutInner>
 }
-// Fri May  8 21:24:43 GMT 2026

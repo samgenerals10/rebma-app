@@ -30,7 +30,7 @@ export default async function ProductionDashboard() {
   ]
 
   const quickActions = [
-    { href: '/dashboard/production/repack', icon: Clipboard, color: '#1a73e8', bg: '#1a73e815', label: 'Create Repack Job', description: 'Start a new repack batch' },
+    { href: '/dashboard/production/repack/new', icon: Clipboard, color: '#1a73e8', bg: '#1a73e815', label: 'Create Repack Job', description: 'Start a new repack batch' },
     { href: '/dashboard/production/quality', icon: CheckCircle, color: '#059669', bg: '#05966915', label: 'Quality Check Log', description: 'Review and approve batches' },
     { href: '/dashboard/production/packaging', icon: Box, color: '#8b5cf6', bg: '#8b5cf615', label: 'Packaging Inventory', description: 'Track packaging materials' },
   ]
@@ -45,7 +45,7 @@ export default async function ProductionDashboard() {
         </div>
         <div className="flex gap-3">
           <Link
-            href="/dashboard/production/repack"
+            href="/dashboard/production/repack/new"
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
             style={{ background: 'var(--accent)', color: 'white' }}
           >
@@ -64,7 +64,7 @@ export default async function ProductionDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {stats.map((stat, i) => (
           <div key={i} className="rounded-xl p-5" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}>
             <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3" style={{ background: stat.bg }}>
@@ -81,7 +81,7 @@ export default async function ProductionDashboard() {
         <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}>
           <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--card-border)' }}>
             <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Repack Job Cards</h2>
-            <Link href="/dashboard/production/repack/jobs" className="text-sm font-medium" style={{ color: 'var(--accent)' }}>
+            <Link href="/dashboard/production/repack" className="text-sm font-medium" style={{ color: 'var(--accent)' }}>
               View All
             </Link>
           </div>

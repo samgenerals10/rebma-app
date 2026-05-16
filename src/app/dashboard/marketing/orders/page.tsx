@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
+import ExportButton from '@/components/ExportButton'
 import OrdersTable from './OrdersTable'
 
 export default async function OrdersPage() {
@@ -30,14 +31,17 @@ export default async function OrdersPage() {
           <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Orders</h2>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{orders?.length || 0} orders found</p>
         </div>
-        <Link
-          href="/dashboard/marketing/orders/new"
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
-          style={{ background: 'var(--accent)', color: 'white' }}
-        >
-          <Plus className="w-4 h-4" />
-          New Order
-        </Link>
+        <div className="flex gap-3 print:hidden">
+          <ExportButton type="print" label="Print List" data={orders || []} filename="rebma_orders" />
+          <Link
+            href="/dashboard/marketing/orders/new"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90 shadow-sm"
+            style={{ background: 'var(--accent)', color: 'white' }}
+          >
+            <Plus className="w-4 h-4" />
+            New Order
+          </Link>
+        </div>
       </div>
       <OrdersTable orders={orders || []} />
     </div>

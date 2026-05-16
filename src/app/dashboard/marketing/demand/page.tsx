@@ -59,7 +59,7 @@ export default function DemandSignalPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Product Name</label>
                 <input required type="text" value={form.product_name} onChange={e => setForm({...form, product_name: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="e.g., Premium Butter 500g" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                   <select required value={form.category} onChange={e => setForm({...form, category: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">

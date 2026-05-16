@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import {
   Search, Plus, Send, Phone, Video, MoreVertical, Smile,
-  Paperclip, X, CheckCheck, Users, User, MessageCircle, Trash2, Reply, ArrowLeft
+  Paperclip, X, CheckCheck, Users, User, MessageCircle, Trash2, Reply, ArrowLeft, XCircle, File, Image as ImageIcon
 } from 'lucide-react'
 
 const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏', '🔥', '✅']
@@ -26,8 +27,16 @@ export default function MessagesPage() {
   const [showEmoji, setShowEmoji] = useState<string | null>(null)
   const [newChatType, setNewChatType] = useState<'person' | 'department'>('person')
   const [mobileShowChat, setMobileShowChat] = useState(false)
+  
+  // New States for UI interactions
+  const [showCall, setShowCall] = useState<'audio' | 'video' | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const [selectedProfile, setSelectedProfile] = useState<any>(null)
+  const [attachedFile, setAttachedFile] = useState<File | null>(null)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
 
   useEffect(() => { init() }, [])
 
@@ -125,20 +134,28 @@ export default function MessagesPage() {
   }
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !activeThread || !currentUser) return
+    let finalBody = newMessage.trim()
+    if (attachedFile) {
+      finalBody = `[Attachment: ${attachedFile.name}] ` + finalBody
+    }
+    
+    if (!finalBody && !attachedFile) return
+    if (!activeThread || !currentUser) return
+    
     setSending(true)
-    await supabase.from('messages').insert({ thread_id: activeThread.id, sender_id: currentUser.id, body: newMessage.trim(), reply_to_id: replyTo?.id || null })
+    await supabase.from('messages').insert({ thread_id: activeThread.id, sender_id: currentUser.id, body: finalBody, reply_to_id: replyTo?.id || null })
     await supabase.from('message_threads').update({ last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', activeThread.id)
+    
     const { data: recipients } = await supabase.from('message_recipients').select('*').eq('thread_id', activeThread.id)
     for (const r of recipients || []) {
       if (r.recipient_id && r.recipient_id !== currentUser.id) {
-        await supabase.from('notifications').insert({ recipient_id: r.recipient_id, sender_id: currentUser.id, title: currentUser.full_name + ': ' + newMessage.trim().slice(0, 60), body: newMessage.trim(), type: 'message', reference_id: activeThread.id, reference_type: 'message_thread', is_read: false })
+        await supabase.from('notifications').insert({ recipient_id: r.recipient_id, sender_id: currentUser.id, title: currentUser.full_name + ': ' + finalBody.slice(0, 60), body: finalBody, type: 'message', reference_id: activeThread.id, reference_type: 'message_thread', is_read: false })
       }
       if (r.recipient_department && r.recipient_department !== currentUser.department) {
-        await supabase.from('notifications').insert({ recipient_department: r.recipient_department, sender_id: currentUser.id, title: currentUser.full_name + ': ' + newMessage.trim().slice(0, 60), body: newMessage.trim(), type: 'message', reference_id: activeThread.id, reference_type: 'message_thread', is_read: false })
+        await supabase.from('notifications').insert({ recipient_department: r.recipient_department, sender_id: currentUser.id, title: currentUser.full_name + ': ' + finalBody.slice(0, 60), body: finalBody, type: 'message', reference_id: activeThread.id, reference_type: 'message_thread', is_read: false })
       }
     }
-    setNewMessage(''); setReplyTo(null); setSending(false)
+    setNewMessage(''); setReplyTo(null); setAttachedFile(null); setSending(false)
     await loadMessages(activeThread.id)
     await loadThreads(currentUser)
   }
@@ -189,9 +206,11 @@ export default function MessagesPage() {
   const filteredUsers = allUsers.filter(u => u.id !== currentUser?.id && (u.full_name?.toLowerCase().includes(userSearch.toLowerCase()) || u.department?.toLowerCase().includes(userSearch.toLowerCase())))
 
   return (
-    <div className="flex h-[calc(100vh-120px)] rounded-xl overflow-hidden" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)', border: '1px solid var(--card-border)' }}>
-      {/* LEFT */}
-      <div className={`flex flex-col ${mobileShowChat ? 'hidden md:flex' : 'flex'}`} style={{ width: 300, borderRight: '1px solid var(--card-border)', flexShrink: 0 }}>
+    <div className="relative">
+
+      <div className="flex h-[calc(100vh-120px)] rounded-xl overflow-hidden" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)', border: '1px solid var(--card-border)' }}>
+        {/* LEFT */}
+        <div className={`flex flex-col ${mobileShowChat ? 'hidden md:flex' : 'flex'}`} style={{ width: 300, borderRight: '1px solid var(--card-border)', flexShrink: 0 }}>
         <div className="px-4 py-3 flex items-center justify-between flex-shrink-0" style={{ borderBottom: '1px solid var(--card-border)' }}>
           <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Messages</h2>
           <button onClick={() => setShowNewChat(true)} className="p-2 rounded-lg" style={{ background: 'var(--accent)', color: 'white' }}><Plus className="w-4 h-4" /></button>
@@ -241,7 +260,10 @@ export default function MessagesPage() {
       {/* RIGHT */}
       <div className={`flex flex-col flex-1 ${!mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
         {!activeThread ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3">
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 relative">
+            <button onClick={() => router.back()} className="absolute top-4 right-4 p-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl shadow-sm border border-red-100 transition" title="Close Messages">
+              <X className="w-5 h-5" />
+            </button>
             <MessageCircle className="w-16 h-16 opacity-10" style={{ color: 'var(--text-secondary)' }} />
             <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Select a conversation</p>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>or start a new one</p>
@@ -263,10 +285,24 @@ export default function MessagesPage() {
                   {getThreadOnline(activeThread) ? 'Online' : getThreadSub(activeThread)}
                 </p>
               </div>
-              <div className="flex items-center gap-1">
-                <button className="p-2 rounded-lg" style={{ background: 'var(--table-header-bg)', color: '#059669' }} title="Audio call (coming soon)"><Phone className="w-4 h-4" /></button>
-                <button className="p-2 rounded-lg" style={{ background: 'var(--table-header-bg)', color: '#1a73e8' }} title="Video call (coming soon)"><Video className="w-4 h-4" /></button>
-                <button className="p-2 rounded-lg" style={{ background: 'var(--table-header-bg)', color: 'var(--text-secondary)' }}><MoreVertical className="w-4 h-4" /></button>
+              <div className="relative flex items-center gap-1">
+                <button onClick={() => setShowCall('audio')} className="p-2 rounded-lg hover:opacity-80" style={{ background: 'var(--table-header-bg)', color: '#059669' }} title="Internet call"><Phone className="w-4 h-4" /></button>
+                <button onClick={() => setShowCall('video')} className="p-2 rounded-lg hover:opacity-80" style={{ background: 'var(--table-header-bg)', color: '#1a73e8' }} title="Video call"><Video className="w-4 h-4" /></button>
+                <button onClick={() => setShowSettings(!showSettings)} className="p-2 rounded-lg hover:opacity-80" style={{ background: 'var(--table-header-bg)', color: 'var(--text-secondary)' }}><MoreVertical className="w-4 h-4" /></button>
+                
+                <div className="w-px h-6 bg-gray-200 mx-1 hidden sm:block"></div>
+                <button onClick={() => router.back()} className="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition border border-red-100" title="Close Messages">
+                  <X className="w-4 h-4" />
+                </button>
+
+                {showSettings && (
+                  <div className="absolute right-0 top-12 w-48 rounded-xl shadow-xl z-50 py-2" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+                    <button onClick={() => { setSelectedProfile(activeThread); setShowSettings(false) }} className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50/10">View Profile</button>
+                    <button className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50/10">Mute Notifications</button>
+                    <button className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50/10 text-red-500">Block User</button>
+                    <button className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50/10 text-red-500">Delete Conversation</button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -285,7 +321,7 @@ export default function MessagesPage() {
                 return (
                   <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group mb-1`}>
                     {!isMe && (
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mr-2 mt-5" style={{ background: '#1a73e820', color: '#1a73e8', visibility: showAvatar ? 'visible' : 'hidden' }}>
+                      <div onClick={() => setSelectedProfile(msg.users)} className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mr-2 mt-5 cursor-pointer hover:opacity-80" style={{ background: '#1a73e820', color: '#1a73e8', visibility: showAvatar ? 'visible' : 'hidden' }} title="View Profile">
                         {msg.users?.full_name?.charAt(0) || '?'}
                       </div>
                     )}
@@ -342,11 +378,20 @@ export default function MessagesPage() {
               </div>
             )}
 
-            <div className="px-4 py-3 flex items-center gap-2 flex-shrink-0" style={{ borderTop: '1px solid var(--card-border)' }}>
+            <div className="px-4 py-3 flex items-center gap-2 flex-shrink-0 relative" style={{ borderTop: '1px solid var(--card-border)' }}>
+              
+              {attachedFile && (
+                <div className="absolute -top-12 left-4 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-md border" style={{ background: 'var(--card-bg)', borderColor: 'var(--accent)' }}>
+                  <File className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+                  <span className="text-xs font-medium truncate max-w-[150px]">{attachedFile.name}</span>
+                  <button onClick={() => setAttachedFile(null)} className="ml-1 text-gray-400 hover:text-red-500"><XCircle className="w-4 h-4" /></button>
+                </div>
+              )}
+
               <button className="p-2 rounded-lg flex-shrink-0" style={{ color: 'var(--text-secondary)' }} onClick={() => fileInputRef.current?.click()}><Paperclip className="w-4 h-4" /></button>
-              <input ref={fileInputRef} type="file" className="hidden" />
+              <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setAttachedFile(e.target.files[0]) }} />
               <input type="text" value={newMessage} onChange={e => setNewMessage(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()} placeholder="Type a message..." className="flex-1 px-4 py-2.5 rounded-full text-sm outline-none" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }} />
-              <button onClick={sendMessage} disabled={sending || !newMessage.trim()} className="p-2.5 rounded-full flex-shrink-0 disabled:opacity-50" style={{ background: 'var(--accent)', color: 'white' }}><Send className="w-4 h-4" /></button>
+              <button onClick={sendMessage} disabled={sending || (!newMessage.trim() && !attachedFile)} className="p-2.5 rounded-full flex-shrink-0 disabled:opacity-50 hover:opacity-90" style={{ background: 'var(--accent)', color: 'white' }}><Send className="w-4 h-4" /></button>
             </div>
           </>
         )}
@@ -400,6 +445,48 @@ export default function MessagesPage() {
           </div>
         </div>
       )}
+
+      {/* CALL UI OVERLAY */}
+      {showCall && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm">
+          <div className="text-center">
+            <div className="w-32 h-32 mx-auto rounded-full bg-blue-500/20 flex items-center justify-center mb-6 animate-pulse">
+              {showCall === 'video' ? <Video className="w-12 h-12 text-blue-500" /> : <Phone className="w-12 h-12 text-green-500" />}
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-2">Calling {getThreadName(activeThread)}...</h2>
+            <p className="text-gray-400 mb-12">Connecting via REBMA Secure {showCall === 'video' ? 'Video' : 'Audio'} Line</p>
+            
+            <div className="flex gap-6 justify-center">
+              <button className="p-4 rounded-full bg-gray-800 text-white hover:bg-gray-700"><MoreVertical className="w-6 h-6" /></button>
+              {showCall === 'video' && <button className="p-4 rounded-full bg-gray-800 text-white hover:bg-gray-700"><Video className="w-6 h-6" /></button>}
+              <button onClick={() => setShowCall(null)} className="p-4 rounded-full bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-500/30">
+                <Phone className="w-6 h-6 rotate-[135deg]" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PROFILE OVERLAY */}
+      {selectedProfile && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setSelectedProfile(null)}>
+          <div className="w-96 rounded-3xl overflow-hidden shadow-2xl p-8 text-center" style={{ background: 'var(--card-bg)' }} onClick={e => e.stopPropagation()}>
+            <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center text-3xl font-bold mb-4 border-4" style={{ background: '#1a73e820', color: '#1a73e8', borderColor: 'var(--card-bg)' }}>
+              {selectedProfile.full_name?.charAt(0) || getThreadName(selectedProfile).charAt(0)}
+            </div>
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{selectedProfile.full_name || getThreadName(selectedProfile)}</h2>
+            <p className="font-medium mt-1 uppercase text-sm" style={{ color: 'var(--accent)' }}>{selectedProfile.role || 'Staff Member'} • {selectedProfile.department || getThreadSub(selectedProfile)}</p>
+            
+            <div className="flex gap-3 justify-center mt-6">
+              <button onClick={() => { setSelectedProfile(null); setShowCall('audio') }} className="p-3 rounded-xl bg-green-50 text-green-600 hover:bg-green-100 transition"><Phone className="w-5 h-5" /></button>
+              <button onClick={() => { setSelectedProfile(null); setShowCall('video') }} className="p-3 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition"><Video className="w-5 h-5" /></button>
+            </div>
+
+            <button onClick={() => setSelectedProfile(null)} className="mt-8 px-6 py-2 rounded-xl border font-medium hover:bg-gray-50 transition" style={{ borderColor: 'var(--card-border)' }}>Close Profile</button>
+          </div>
+        </div>
+      )}
+    </div>
     </div>
   )
 }

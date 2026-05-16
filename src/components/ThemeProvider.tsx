@@ -58,14 +58,22 @@ export function ThemeProvider({ children, initialConfig }: {
   children: React.ReactNode
   initialConfig?: Partial<ThemeConfig>
 }) {
+  const [mounted, setMounted] = useState(false)
   const [config, setConfig] = useState<ThemeConfig>({
     ...defaultConfig,
     ...initialConfig,
   })
 
   useEffect(() => {
+    setMounted(true)
     applyTheme(config)
-  }, [config])
+  }, [])
+
+  useEffect(() => {
+    if (mounted) {
+      applyTheme(config)
+    }
+  }, [config, mounted])
 
   const saveToSupabase = useCallback(async (newConfig: ThemeConfig) => {
     try {
@@ -107,9 +115,7 @@ export function ThemeProvider({ children, initialConfig }: {
 
   return (
     <ThemeContext.Provider value={{ config, setTheme, setPalette, setAnimation, setButtonStyle, toggleDarkMode }}>
-      <SidebarProvider>
-        {children}
-      </SidebarProvider>
+      <SidebarProvider>{children}</SidebarProvider>
     </ThemeContext.Provider>
   )
 }

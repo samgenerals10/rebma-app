@@ -3,60 +3,120 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  ChevronLeft, ChevronRight, TrendingUp, DollarSign, ShoppingCart,
+  ChevronLeft, ChevronRight, ChevronDown, TrendingUp, DollarSign, ShoppingCart,
   Package, Factory, Truck, Users, Home, Settings, BarChart3, ClipboardList,
   FileText, HelpCircle, Sun, Moon, Bell, MessageCircle, X, Send, Plus,
-  CheckCircle, AlertTriangle, Clock, Info
+  CheckCircle, AlertTriangle, Clock, Info, ShieldAlert
 } from 'lucide-react'
 import { useTheme } from '@/components/ThemeProvider'
 import { useSidebar } from '@/components/SidebarContext'
 import { RebmaLogo } from '@/components/RebmaLogo'
 import { SidebarAvatar } from '@/components/SidebarAvatar'
 import { createClient } from '@/lib/supabase/client'
+import { useAppStore } from '@/lib/store'
+
+
+// Static configuration outside component for performance
+const DEPT_SUB_MENUS: Record<string, any[]> = {
+  management: [
+    { name: 'Overview', href: '/dashboard/management', icon: Home },
+    { name: 'Goods Receipts', href: '/dashboard/management/goods-receipts', icon: Package, pulse: true },
+    { name: 'Set Prices', href: '/dashboard/management/set-price', icon: DollarSign },
+    { name: 'Audit Trail', href: '/dashboard/management/audit', icon: ClipboardList },
+  ],
+  finance: [
+    { name: 'Overview', href: '/dashboard/finance', icon: Home },
+    { name: 'Pending Orders', href: '/dashboard/finance?tab=pending', icon: Clock, pulse: true },
+    { name: 'Approved', href: '/dashboard/finance?tab=approved', icon: CheckCircle },
+    { name: 'Rejected', href: '/dashboard/finance?tab=rejected', icon: X },
+    { name: 'Production', href: '/dashboard/finance?tab=production', icon: Factory },
+    { name: 'Price Updates', href: '/dashboard/finance?tab=prices', icon: DollarSign },
+    { name: 'Record Payment', href: '/dashboard/finance/payments/new', icon: Plus },
+    { name: 'Reports', href: '/dashboard/finance/reports', icon: BarChart3 },
+    { name: 'Reconciliation', href: '/dashboard/finance/reconciliation', icon: DollarSign },
+    { name: 'GPS Tracking', href: '/dashboard/dispatch/tracking', icon: Truck },
+  ],
+  marketing: [
+    { name: 'Overview', href: '/dashboard/marketing', icon: Home },
+    { name: 'Customers', href: '/dashboard/marketing/customers', icon: Users },
+    { name: 'Orders', href: '/dashboard/marketing/orders', icon: ShoppingCart },
+    { name: 'Demand Forecaster', href: '/dashboard/marketing/demand', icon: TrendingUp },
+  ],
+  operations: [
+    { name: 'Overview', href: '/dashboard/operations', icon: Home },
+    { name: 'Receive Goods', href: '/dashboard/operations/receive', icon: Plus },
+    { name: 'Inventory', href: '/dashboard/operations?tab=inventory', icon: Package },
+    { name: 'GPS Tracking', href: '/dashboard/dispatch/tracking', icon: Truck },
+  ],
+  production: [
+    { name: 'Overview', href: '/dashboard/production', icon: Home },
+    { name: 'Repack Jobs', href: '/dashboard/production/repack', icon: Factory },
+    { name: 'Quality Checks', href: '/dashboard/production/quality', icon: CheckCircle },
+  ],
+  dispatch: [
+    { name: 'Overview', href: '/dashboard/dispatch', icon: Home },
+    { name: 'GPS Tracking', href: '/dashboard/dispatch/tracking', icon: Truck },
+    { name: 'Trips', href: '/dashboard/dispatch/trips', icon: ClipboardList },
+    { name: 'Vehicles', href: '/dashboard/dispatch/vehicles', icon: Truck },
+  ],
+  hr: [
+    { name: 'Overview', href: '/dashboard/hr', icon: Home },
+    { name: 'Employees', href: '/dashboard/hr/employees', icon: Users },
+    { name: 'Payroll', href: '/dashboard/hr/payroll', icon: DollarSign },
+  ],
+  receptionist: [
+    { name: 'Overview', href: '/dashboard/receptionist', icon: Home },
+    { name: 'Attendance', href: '/dashboard/receptionist/attendance', icon: ClipboardList },
+    { name: 'Visitors', href: '/dashboard/receptionist/visitors', icon: Users },
+  ]
+};
+
+const DEPARTMENTS = [
+  { key: 'management', name: 'Management', icon: TrendingUp },
+  { key: 'finance', name: 'Finance', icon: DollarSign },
+  { key: 'marketing', name: 'Marketing', icon: ShoppingCart },
+  { key: 'operations', name: 'Operations', icon: Package },
+  { key: 'production', name: 'Production', icon: Factory },
+  { key: 'dispatch', name: 'Dispatch', icon: Truck },
+  { key: 'hr', name: 'HR', icon: Users },
+  { key: 'receptionist', name: 'Receptionist', icon: Users },
+];
+
+const MAIN_LINKS = [
+  { key: 'overview', name: 'Overview', icon: Home, href: '/dashboard' },
+  { key: 'reports', name: 'Reports', icon: BarChart3, href: '/dashboard/reports' },
+  { key: 'tasks', name: 'Tasks', icon: ClipboardList, href: '/dashboard/tasks' },
+  { key: 'documents', name: 'Documents', icon: FileText, href: '/dashboard/documents' },
+];
 
 export default function Sidebar({ userRole, userDepartment }: { userRole: string; userDepartment: string }) {
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const pathname = usePathname()
-  const { config, toggleDarkMode } = useTheme()
-  const { isOpen, toggle } = useSidebar()
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+  const { config, toggleDarkMode } = useTheme();
+  const { isOpen, toggle } = useSidebar();
+  const [expandedDept, setExpandedDept] = useState<string | null>(null);
 
-  useEffect(() => { setMobileOpen(false) }, [pathname])
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
-  const departments = [
-    { key: 'management', name: 'Management', icon: TrendingUp },
-    { key: 'finance', name: 'Finance', icon: DollarSign },
-    { key: 'marketing', name: 'Marketing', icon: ShoppingCart },
-    { key: 'operations', name: 'Operations', icon: Package },
-    { key: 'production', name: 'Production', icon: Factory },
-    { key: 'dispatch', name: 'Dispatch', icon: Truck },
-    { key: 'hr', name: 'HR', icon: Users },
-  ]
-
-  const mainLinks = [
-    { key: 'overview', name: 'Overview', icon: Home, href: '/dashboard' },
-    { key: 'reports', name: 'Reports', icon: BarChart3, href: '/dashboard/reports' },
-    { key: 'tasks', name: 'Tasks', icon: ClipboardList, href: '/dashboard/tasks' },
-    { key: 'documents', name: 'Documents', icon: FileText, href: '/dashboard/documents' },
-  ]
-
-  const showAllDepartments = userRole === 'ceo' || userRole === 'manager'
+  const showAllDepartments = userRole === 'ceo' || userRole === 'manager';
   const visibleDepartments = showAllDepartments
-    ? departments
-    : departments.filter(d => d.key === userDepartment)
+    ? DEPARTMENTS
+    : DEPARTMENTS.filter(d => d.key === userDepartment);
 
-  const itemStyle = (isActive: boolean) => ({
-    background: isActive ? 'var(--sidebar-active-bg)' : 'transparent',
+  const itemStyle = (isActive: boolean, isSub: boolean = false) => ({
+    background: isActive ? (isSub ? 'rgba(255,255,255,0.1)' : 'var(--sidebar-active-bg)') : 'transparent',
     color: isActive ? 'var(--sidebar-active-text)' : 'var(--sidebar-text)',
     borderRadius: 'var(--radius-md)',
     display: 'flex',
     alignItems: 'center',
     gap: 12,
-    padding: '10px 12px',
+    padding: isSub ? '8px 12px 8px 44px' : '10px 12px',
     transition: 'all 0.2s',
     textDecoration: 'none',
     width: '100%',
     border: 'none',
     cursor: 'pointer',
+    position: 'relative' as any,
   })
 
   return (
@@ -65,9 +125,19 @@ export default function Sidebar({ userRole, userDepartment }: { userRole: string
         <div className="md:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setMobileOpen(false)} />
       )}
 
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b z-40 flex items-center justify-between px-4" style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--header-border)' }}>
+        <RebmaLogo size={32} showText={true} />
+        <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg" style={{ background: 'var(--card-border)' }}>
+          <div className="w-6 h-0.5 bg-gray-600 mb-1.5" />
+          <div className="w-6 h-0.5 bg-gray-600 mb-1.5" />
+          <div className="w-6 h-0.5 bg-gray-600" />
+        </button>
+      </div>
+
       <button
         onClick={toggle}
-        className="hidden md:flex fixed z-50 p-1.5 rounded-r-lg shadow items-center justify-center"
+        className="hidden md:flex fixed z-50 p-1.5 rounded-r-lg shadow items-center justify-center print:hidden"
         style={{
           top: 72,
           left: isOpen ? 256 : 80,
@@ -84,7 +154,7 @@ export default function Sidebar({ userRole, userDepartment }: { userRole: string
       </button>
 
       <aside
-        className={`fixed left-0 top-0 h-screen z-50 flex flex-col transition-all duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        className={`fixed left-0 top-0 h-screen z-50 flex flex-col transition-all duration-300 print:hidden ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         style={{
           width: isOpen ? 256 : 80,
           background: 'var(--sidebar-bg)',
@@ -98,13 +168,15 @@ export default function Sidebar({ userRole, userDepartment }: { userRole: string
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+        <div className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5 custom-scrollbar">
           {isOpen && <p className="text-xs font-semibold uppercase tracking-wider px-3 mb-2 mt-1" style={{ color: 'var(--sidebar-text-muted)' }}>Main</p>}
-          {mainLinks.map(link => {
+          {MAIN_LINKS.map(link => {
             const Icon = link.icon
-            const isActive = pathname === link.href
+            const isActive = link.href === '/dashboard'
+              ? pathname === '/dashboard'
+              : pathname === link.href || pathname.startsWith(link.href + '/')
             return (
-              <Link key={link.key} href={link.href} style={itemStyle(isActive) as any} title={!isOpen ? link.name : undefined}>
+              <Link key={link.key} href={link.href} style={itemStyle(isActive) as any} title={!isOpen ? link.name : undefined} aria-label={link.name}>
                 <Icon className="w-5 h-5 flex-shrink-0" />
                 {isOpen && <span className="text-sm font-medium">{link.name}</span>}
               </Link>
@@ -118,13 +190,61 @@ export default function Sidebar({ userRole, userDepartment }: { userRole: string
             const Icon = dept.icon
             const deptPath = `/dashboard/${dept.key}`
             const isActive = pathname.startsWith(deptPath)
+            const isExpanded = expandedDept === dept.key
+            const subItems = DEPT_SUB_MENUS[dept.key] || []
+
             return (
-              <Link key={dept.key} href={deptPath} style={itemStyle(isActive) as any} title={!isOpen ? dept.name : undefined}>
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }}>
-                  <Icon className="w-4 h-4" />
+              <div key={dept.key} className="flex flex-col">
+                <Link 
+                  href={deptPath}
+                  onClick={() => {
+                    // Toggle expansion but allow navigation
+                    setExpandedDept(isExpanded ? null : dept.key)
+                    if (!isOpen) toggle() // Open sidebar if collapsed
+                  }}
+                  style={itemStyle(isActive) as any} 
+                  title={!isOpen ? dept.name : undefined}
+                  className={`cursor-pointer group ${isActive ? 'ring-1 ring-inset ring-white/10' : ''}`}
+                >
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300" 
+                    style={{ background: isActive ? 'var(--accent)' : 'rgba(255,255,255,0.15)', boxShadow: isActive ? '0 0 10px var(--accent)' : 'none' }}>
+                    <Icon className={`w-4 h-4 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                  </div>
+                  {isOpen && (
+                    <div className="flex-1 flex items-center justify-between min-w-0">
+                      <span className={`text-sm font-medium truncate ${isActive ? 'font-bold' : ''}`} style={{ color: isActive ? 'var(--sidebar-active-text)' : 'inherit' }}>{dept.name}</span>
+                      {subItems.length > 0 && (
+                        <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                          <ChevronDown className={`w-3.5 h-3.5 ${isActive ? 'opacity-100' : 'opacity-70'}`} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Link>
+
+                {/* Sub Menu with smooth CSS transition */}
+                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isOpen && isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                  {subItems.map((sub, idx) => {
+                    const SubIcon = sub.icon
+                    const isSubActive = pathname === sub.href || (typeof window !== 'undefined' && (pathname + window.location.search).includes(sub.href))
+                    
+                    return (
+                      <Link 
+                        key={idx} 
+                        href={sub.href} 
+                        style={itemStyle(isSubActive, true) as any}
+                        className="group relative"
+                      >
+                        <SubIcon className={`w-4 h-4 flex-shrink-0 transition-opacity ${isSubActive ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`} />
+                        <span className={`text-[13px] font-medium ${isSubActive ? 'font-bold' : ''}`}>{sub.name}</span>
+                        {sub.pulse && (
+                          <div className="absolute left-10 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-red-500 animate-attention" />
+                        )}
+                      </Link>
+                    )
+                  })}
                 </div>
-                {isOpen && <span className="text-sm font-medium truncate">{dept.name}</span>}
-              </Link>
+              </div>
             )
           })}
         </div>
@@ -160,19 +280,10 @@ export function ThemeToggle() {
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false)
-  const [notifications, setNotifications] = useState<any[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
+  const { notifications, user } = useAppStore()
+  const unreadCount = notifications.filter(n => !n.is_read).length
   const supabase = createClient()
   const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    loadNotifications()
-    const channel = supabase
-      .channel('notifications')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, () => loadNotifications())
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [])
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -182,34 +293,12 @@ export function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const loadNotifications = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data: userData } = await supabase.from('users').select('department').eq('id', user.id).single()
-    const dept = userData?.department
-
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .or(`recipient_id.eq.${user.id},recipient_department.eq.${dept}`)
-      .order('created_at', { ascending: false })
-
-    if (data) {
-      setNotifications(data)
-      setUnreadCount(data.filter(n => !n.is_read).length)
-    }
-  }
-
   const markAllRead = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: userData } = await supabase.from('users').select('department').eq('id', user.id).single()
     await supabase
       .from('notifications')
       .update({ is_read: true })
-      .or(`recipient_id.eq.${user.id},recipient_department.eq.${userData?.department}`)
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
-    setUnreadCount(0)
+      .or(`recipient_id.eq.${user.id},recipient_department.eq.${user.department}`)
   }
 
   const getIcon = (type: string) => {
@@ -234,7 +323,7 @@ export function NotificationBell() {
       <button onClick={() => setIsOpen(!isOpen)} className="p-2.5 rounded-xl transition relative" style={{ background: 'var(--card-border)', color: 'var(--text-secondary)' }}>
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-attention">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -297,7 +386,7 @@ export function MessagingSystem() {
   const supabase = createClient()
   const ref = useRef<HTMLDivElement>(null)
 
-  const departments = ['management', 'finance', 'marketing', 'operations', 'production', 'dispatch', 'hr']
+  const departments = ['ceo', 'management', 'finance', 'marketing', 'operations', 'production', 'dispatch', 'hr']
 
   useEffect(() => {
     loadData()
@@ -515,7 +604,7 @@ export function MessagingSystem() {
                 {messages.map((msg, i) => {
                   const isMe = msg.sender_id === currentUser?.id
                   return (
-                    <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <div className="max-w-[80%]">
                         <p className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
                           {isMe ? 'You' : msg.users?.full_name} · {timeAgo(msg.created_at)}

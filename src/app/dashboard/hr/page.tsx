@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Users, UserCheck, Clock, Calendar, DollarSign, ClipboardList, Plus, UserPlus } from 'lucide-react'
+import { Users, UserCheck, Clock, Calendar, DollarSign, ClipboardList, Plus, UserPlus, Navigation } from 'lucide-react'
 
 export default async function HRDashboard() {
   const supabase = await createClient()
@@ -37,33 +37,15 @@ export default async function HRDashboard() {
     { href: '/dashboard/hr/attendance', icon: Clock, color: '#8b5cf6', bg: '#8b5cf615', label: 'Attendance', description: 'Track staff attendance' },
     { href: '/dashboard/hr/leave', icon: Calendar, color: '#f59e0b', bg: '#f59e0b15', label: 'Leave Management', description: 'Approve and track leave requests' },
     { href: '/dashboard/hr/payroll', icon: DollarSign, color: '#059669', bg: '#05966915', label: 'Payroll', description: 'Manage salaries and payslips' },
+    { href: '/dashboard/dispatch/tracking', icon: Navigation, color: '#059669', bg: '#05966915', label: 'Live GPS Tracking', description: 'Monitor delivery fleet' },
   ]
 
   return (
     <div>
-      {/* Header with actions at top */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Human Resources</h2>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Staff management, attendance and payroll</p>
-        </div>
-        <div className="flex gap-3">
-          <Link
-            href="/dashboard/hr/accounts"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
-            style={{ background: 'var(--accent)', color: 'white' }}
-          >
-            <UserPlus className="w-4 h-4" />
-            New Registration
-          </Link>
-          <Link
-            href="/dashboard/hr/employees"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-80"
-            style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}
-          >
-            <Users className="w-4 h-4" />
-            All Staff
-          </Link>
         </div>
       </div>
 
@@ -80,14 +62,14 @@ export default async function HRDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Pending Registrations */}
         <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}>
           <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--card-border)' }}>
             <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Pending Registrations</h2>
-            <Link href="/dashboard/hr/accounts" className="text-sm font-medium" style={{ color: 'var(--accent)' }}>
-              View All
-            </Link>
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full" style={{ background: '#f59e0b15', color: '#f59e0b' }}>
+              {pendingCount} pending
+            </span>
           </div>
           <div>
             {pendingRegistrations && pendingRegistrations.length > 0 ? (
@@ -119,32 +101,8 @@ export default async function HRDashboard() {
             )}
           </div>
         </div>
-
-        {/* Quick Actions */}
-        <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card-bg)', boxShadow: 'var(--card-shadow)' }}>
-          <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--card-border)' }}>
-            <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Quick Actions</h2>
-          </div>
-          <div>
-            {quickActions.map((action, i) => (
-              <Link
-                key={action.href}
-                href={action.href}
-                className="flex items-center gap-4 px-5 py-4 transition hover:opacity-80"
-                style={{ borderTop: i > 0 ? '1px solid var(--card-border)' : 'none' }}
-              >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: action.bg }}>
-                  <action.icon className="w-5 h-5" style={{ color: action.color }} />
-                </div>
-                <div>
-                  <p className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{action.label}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{action.description}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
       </div>
+
     </div>
   )
 }

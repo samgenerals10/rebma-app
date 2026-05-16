@@ -134,7 +134,7 @@ export default function OrdersToPrep({ orders: initialOrders, currentUser }: { o
               {/* Items */}
               <div className="px-5 pb-3 flex flex-wrap gap-2">
                 {order.order_items?.map((item: any, i: number) => (
-                  <span key={i} className="text-xs px-2 py-1 rounded-lg"
+                  <span key={item.id || item.product_id || i} className="text-xs px-2 py-1 rounded-lg"
                     style={{ background: 'var(--table-header-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}>
                     {item.products?.name} × {item.quantity} {item.products?.unit_of_measure || 'pcs'}
                   </span>
@@ -155,7 +155,7 @@ export default function OrdersToPrep({ orders: initialOrders, currentUser }: { o
                       <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>PACKING DETAILS</p>
                       <div className="space-y-2">
                         {order.order_items?.map((item: any, i: number) => (
-                          <div key={i} className="flex justify-between items-center p-2 rounded-lg" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+                          <div key={item.id || item.product_id || i} className="flex justify-between items-center p-2 rounded-lg" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
                             <div>
                               <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{item.products?.name}</p>
                               <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.products?.sku}</p>
@@ -190,7 +190,7 @@ export default function OrdersToPrep({ orders: initialOrders, currentUser }: { o
                         </div>
                         <div className="flex justify-between">
                           <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Total</span>
-                          <span className="text-xs font-bold" style={{ color: 'var(--accent)' }}>GH₵{parseFloat(order.total_amount).toLocaleString()}</span>
+                          <span className="text-xs font-bold" style={{ color: 'var(--accent)' }}>GH₵{parseFloat(order.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       </div>
                     </div>

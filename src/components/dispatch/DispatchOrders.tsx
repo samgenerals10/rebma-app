@@ -47,7 +47,7 @@ export default function DispatchOrders({ orders: initialOrders, currentUser }: {
         recipient_department: 'finance',
         sender_id: currentUser.id,
         title: 'Order Dispatched — ' + order.order_number,
-        body: order.customers?.name + ' — GH₵' + parseFloat(order.total_amount).toLocaleString() + ' dispatched.',
+        body: order.customers?.name + ' — GH₵' + parseFloat(order.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' dispatched.',
         type: 'order_dispatched',
         reference_id: order.id,
         is_read: false
@@ -77,7 +77,7 @@ export default function DispatchOrders({ orders: initialOrders, currentUser }: {
         recipient_department: 'finance',
         sender_id: currentUser.id,
         title: 'Order Delivered — ' + order.order_number,
-        body: order.customers?.name + ' — GH₵' + parseFloat(order.total_amount).toLocaleString() + ' delivered.',
+        body: order.customers?.name + ' — GH₵' + parseFloat(order.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' delivered.',
         type: 'order_delivered',
         reference_id: order.id,
         is_read: false
@@ -166,7 +166,7 @@ export default function DispatchOrders({ orders: initialOrders, currentUser }: {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>GH₵{parseFloat(order.total_amount).toLocaleString()}</p>
+                  <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>GH₵{parseFloat(order.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   {!isDelivered && (
                     <button onClick={() => setActiveOrder(isActive ? null : order.id)}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium"
@@ -180,7 +180,7 @@ export default function DispatchOrders({ orders: initialOrders, currentUser }: {
               {/* Items */}
               <div className="px-5 pb-3 flex flex-wrap gap-2">
                 {order.order_items?.map((item: any, i: number) => (
-                  <span key={i} className="text-xs px-2 py-1 rounded-lg"
+                  <span key={item.id || item.product_id || i} className="text-xs px-2 py-1 rounded-lg"
                     style={{ background: 'var(--table-header-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}>
                     {item.products?.name} × {item.quantity}
                   </span>
@@ -205,7 +205,7 @@ export default function DispatchOrders({ orders: initialOrders, currentUser }: {
                           { label: 'Phone', value: order.customers?.phone || 'N/A' },
                           { label: 'Address', value: order.customers?.address || 'N/A' },
                           { label: 'Payment', value: order.payment_mode?.replace(/_/g, ' ') || 'N/A' },
-                          { label: 'Total', value: 'GH₵' + parseFloat(order.total_amount).toLocaleString() },
+                          { label: 'Total', value: 'GH₵' + parseFloat(order.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
                         ].map(row => (
                           <div key={row.label} className="flex justify-between">
                             <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>

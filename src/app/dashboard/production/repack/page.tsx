@@ -1,126 +1,175 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Clipboard, ArrowLeft, Plus, Users } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { Plus, Search, Filter, Package, ArrowLeft, CheckCircle, Clock, AlertTriangle, Play } from 'lucide-react'
+
+const supabase = createClient()
 
 export default function RepackJobsPage() {
-  const supabase = createClient()
-  const [showForm, setShowForm] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [jobs, setJobs] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<string>('all')
 
-  const [form, setForm] = useState({
-    source_product: '',
-    target_product: '',
-    input_qty: '',
-    assigned_workers: '',
-    notes: ''
-  })
+  useEffect(() => {
+    loadJobs()
+  }, [])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+  const loadJobs = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: userData } = await supabase.from('users').select('*').eq('id', user.id).single()
+      setCurrentUser(userData)
+    }
 
-    const batchNumber = `BATCH-${Date.now()}`
-
-    await supabase.from('approval_queue').insert({
-      type: 'repack_job',
-      reference_id: batchNumber,
-      amount: parseInt(form.input_qty) || 0,
-      notes: `${form.source_product}|${form.target_product}|${form.input_qty}|${form.assigned_workers}|${form.notes}`,
-      status: 'pending'
-    })
-
-    setShowForm(false)
+    const { data } = await supabase
+      .from('repack_jobs')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (data) setJobs(data)
     setLoading(false)
   }
 
+  const completeJob = async (job: any) => {
+    const confirm = window.confirm(`Are you sure you have finished producing ${job.output_qty_expected} packs of ${job.source_product}?`)
+    if (!confirm || !currentUser) return
+
+    setLoading(true)
+    
+    // Update the job status
+    await supabase.from('repack_jobs').update({ status: 'completed', output_qty: job.output_qty_expected }).eq('id', job.id)
+
+    // Notify all departments
+    const notifyBody = `Production of ${job.batch_number} is complete. ${job.output_qty_expected} packs of ${job.source_product} are now available in stock.`
+    await supabase.from('notifications').insert([
+      { recipient_department: 'operations', sender_id: currentUser.id, title: 'New Goods Produced', body: notifyBody, type: 'production_completed', reference_id: job.id, is_read: false },
+      { recipient_department: 'marketing', sender_id: currentUser.id, title: 'New Stock Available', body: notifyBody, type: 'production_completed', reference_id: job.id, is_read: false },
+      { recipient_department: 'finance', sender_id: currentUser.id, title: 'Production Completed', body: notifyBody, type: 'production_completed', reference_id: job.id, is_read: false },
+      { recipient_department: 'management', sender_id: currentUser.id, title: 'Batch Completed', body: notifyBody, type: 'production_completed', reference_id: job.id, is_read: false }
+    ])
+
+    await loadJobs()
+  }
+
+  const filteredJobs = jobs.filter(job => {
+    const matchesSearch = job.batch_number?.toLowerCase().includes(search.toLowerCase()) ||
+      job.source_product?.toLowerCase().includes(search.toLowerCase())
+    const matchesFilter = filter === 'all' || job.status === filter
+    return matchesSearch && matchesFilter
+  })
+
+  const statusColors: Record<string, any> = {
+    pending_finance: { bg: 'bg-red-100', text: 'text-red-700', icon: Clock, label: 'Waiting on Finance' },
+    pending_operations: { bg: 'bg-orange-100', text: 'text-orange-700', icon: Package, label: 'Waiting for Goods' },
+    in_progress: { bg: 'bg-blue-100', text: 'text-blue-700', icon: Play, label: 'In Production' },
+    completed: { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle, label: 'Completed' },
+  }
+
+  if (loading) return <div className="p-10 text-center">Loading jobs...</div>
+
   return (
-    <div className="">
-
-      <main className="max-w-7xl mx-auto">
-        {showForm && (
-          <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Create Repack Job</h2>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Source Product</label>
-                <input required type="text" value={form.source_product} onChange={e => setForm({...form, source_product: e.target.value})} placeholder="e.g., Milk Powder 1kg" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Target Product</label>
-                <input required type="text" value={form.target_product} onChange={e => setForm({...form, target_product: e.target.value})} placeholder="e.g., Milk Powder 500g" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Input Quantity (kg)</label>
-                <input required type="number" value={form.input_qty} onChange={e => setForm({...form, input_qty: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Assigned Workers</label>
-                <input required type="text" value={form.assigned_workers} onChange={e => setForm({...form, assigned_workers: e.target.value})} placeholder="e.g., John, Mary, Peter" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-                <input type="text" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
-              </div>
-              <div className="md:col-span-2 flex gap-4">
-                <button type="submit" disabled={loading} className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
-                  {loading ? 'Creating...' : 'Create Job'}
-                </button>
-                <button type="button" onClick={() => setShowForm(false)} className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Batch</th>
-                <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Source → Target</th>
-                <th className="text-right px-6 py-3 text-sm font-medium text-gray-500">Input</th>
-                <th className="text-right px-6 py-3 text-sm font-medium text-gray-500">Output</th>
-                <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Workers</th>
-                <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Status</th>
-                <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {[
-                { batch: 'BATCH-001', source: 'Milk Powder 1kg', target: 'Milk Powder 500g', input: '100kg', output: '198 packs', workers: 'John, Mary', status: 'in_progress' },
-                { batch: 'BATCH-002', source: 'Flour 10kg', target: 'Flour 1kg', input: '200kg', output: '195 bags', workers: 'Peter, Paul', status: 'pending_qc' },
-                { batch: 'BATCH-003', source: 'Margarine 1kg', target: 'Margarine 500g', input: '50kg', output: '98 packs', workers: 'James', status: 'completed' },
-              ].map((job, i) => (
-                <tr key={i} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium text-gray-900">{job.batch}</td>
-                  <td className="px-6 py-4 text-gray-600">{job.source} → {job.target}</td>
-                  <td className="px-6 py-4 text-right text-gray-600">{job.input}</td>
-                  <td className="px-6 py-4 text-right font-medium text-gray-900">{job.output}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1 text-gray-600">
-                      <Users className="w-4 h-4" /> {job.workers}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      job.status === 'completed' ? 'bg-green-100 text-green-700' :
-                      job.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                      'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {job.status === 'in_progress' ? 'In Progress' : job.status === 'pending_qc' ? 'Pending QC' : 'Completed'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button className="text-emerald-600 hover:underline text-sm">View Details</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="max-w-6xl mx-auto">
+      <div className="flex items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Repack Job Cards</h1>
+          <p className="text-gray-500">View and manage all repacking jobs</p>
         </div>
-      </main>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 p-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search jobs..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-lg border dark:border-gray-600 dark:bg-gray-700"
+            />
+          </div>
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="px-4 py-2 rounded-lg border dark:border-gray-600 dark:bg-gray-700"
+          >
+            <option value="all">All Status</option>
+            <option value="pending_finance">Waiting on Finance</option>
+            <option value="pending_operations">Waiting for Goods</option>
+            <option value="in_progress">In Production</option>
+            <option value="completed">Completed</option>
+          </select>
+          <Link href="/dashboard/production/repack/new" className="px-4 py-2 bg-emerald-500 text-white rounded-lg flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            New Job
+          </Link>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredJobs.map((job) => {
+          const config = statusColors[job.status] || statusColors.pending_finance
+          const StatusIcon = config.icon
+          return (
+            <div key={job.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 p-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-bold text-lg">{job.batch_number}</span>
+                <span className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 ${config.bg} ${config.text}`}>
+                  <StatusIcon className="w-3 h-3" />
+                  {config.label}
+                </span>
+              </div>
+              <div className="space-y-2 mb-4">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Source:</span>
+                  <span className="text-sm font-medium">{job.source_product}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Target:</span>
+                  <span className="text-sm font-medium">{job.target_pack}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Input:</span>
+                  <span className="text-sm font-medium">{job.input_qty} units</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Output:</span>
+                  <span className="text-sm font-medium">{job.output_qty || job.output_qty_expected} units</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Created:</span>
+                  <span className="text-sm font-medium">{new Date(job.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Link href={`/dashboard/production/repack/${job.id}`} className="flex-1 py-2 border rounded-lg text-center hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium transition">
+                  Details
+                </Link>
+                {job.status === 'in_progress' && (
+                  <button onClick={() => completeJob(job)} className="flex-1 py-2 rounded-lg text-center bg-emerald-50 text-emerald-600 hover:bg-emerald-100 text-sm font-bold transition">
+                    Finish Job
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {filteredJobs.length === 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border dark:border-gray-700 p-12 text-center">
+          <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No Jobs Found</h3>
+          <p className="text-gray-500 mb-4">No repack jobs match your search criteria.</p>
+          <Link href="/dashboard/production/repack/new" className="text-emerald-600 hover:underline">
+            Create a new job
+          </Link>
+        </div>
+      )}
     </div>
   )
 }

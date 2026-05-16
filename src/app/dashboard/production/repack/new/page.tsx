@@ -45,18 +45,33 @@ export default function NewRepackJobPage() {
 
     const batchNumber = `BATCH-${Date.now().toString().slice(-6)}`
 
-    const { error } = await supabase.from('repack_jobs').insert({
+    const { data: job, error } = await supabase.from('repack_jobs').insert({
       batch_number: batchNumber,
       source_product: formData.source_product,
       target_pack: formData.target_pack_size,
       input_qty: parseInt(formData.input_qty),
       output_qty_expected: parseInt(formData.output_qty_expected),
-      status: 'pending',
+      status: 'pending_finance',
       created_by: user.id,
-    })
+    }).select().single()
 
-    if (!error) {
-      router.push('/dashboard/production/repack/jobs')
+    if (error) {
+      console.error('Error inserting repack job:', error)
+      alert(`Error creating job: ${error.message}`)
+      setLoading(false)
+      return
+    }
+
+    if (job) {
+      await supabase.from('notifications').insert({
+        recipient_department: 'finance',
+        title: `Production Request: ${batchNumber}`,
+        body: `Production requested ${formData.input_qty} of ${formData.source_product} for repacking. Needs Finance approval.`,
+        type: 'production_request',
+        reference_id: job.id,
+        reference_type: 'repack_job'
+      })
+      router.push('/dashboard/production/repack')
     }
     setLoading(false)
   }
@@ -150,7 +165,7 @@ export default function NewRepackJobPage() {
             {loading ? 'Creating...' : 'Create Job'}
           </button>
           <Link
-            href="/dashboard/production/repack/jobs"
+            href="/dashboard/production/repack"
             className="px-6 py-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             Cancel

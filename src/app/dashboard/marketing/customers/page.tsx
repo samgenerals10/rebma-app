@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Users, Plus, Phone, Mail, MapPin, AlertTriangle } from 'lucide-react'
+import ExportButton from '@/components/ExportButton'
 
 export default async function CustomerDirectoryPage() {
   const supabase = await createClient()
@@ -32,6 +33,23 @@ export default async function CustomerDirectoryPage() {
     <div className="">
 
       <main className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">Customer Directory</h1>
+            <p className="text-gray-500">{customers?.length || 0} customers total</p>
+          </div>
+          <div className="flex gap-3 print:hidden">
+            <ExportButton type="export" label="Export" data={customers || []} filename="rebma_customers" />
+            <Link
+              href="/dashboard/marketing/customers/new"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90 shadow-sm"
+              style={{ background: 'var(--accent)', color: 'white' }}
+            >
+              <Plus className="w-4 h-4" />
+              New Customer
+            </Link>
+          </div>
+        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">

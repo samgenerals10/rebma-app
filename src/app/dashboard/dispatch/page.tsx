@@ -48,7 +48,7 @@ export default async function DispatchDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Ready for Dispatch', value: readyCount, icon: MapPin, color: readyCount > 0 ? '#1a73e8' : '#059669', bg: readyCount > 0 ? '#1a73e815' : '#05966915' },
           { label: 'In Transit', value: inTransitCount, icon: Truck, color: '#f59e0b', bg: '#f59e0b15' },

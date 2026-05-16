@@ -1,6 +1,6 @@
 'use client'
 import { createClient } from '@/lib/supabase/client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CheckCircle, X, Clock, ChevronDown, ChevronUp, CreditCard, User, Phone, MapPin } from 'lucide-react'
 import OrderStepper from '@/components/OrderStepper'
 
@@ -12,6 +12,10 @@ export default function CreditApprovals({ orders: initialOrders, currentUser }: 
   const [rejectionReason, setRejectionReason] = useState('')
   const [rejectingOrder, setRejectingOrder] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending')
+
+  useEffect(() => {
+    setOrders(initialOrders)
+  }, [initialOrders])
 
   const loadOrders = async () => {
     const { data } = await supabase
@@ -36,7 +40,7 @@ export default function CreditApprovals({ orders: initialOrders, currentUser }: 
         recipient_department: 'finance',
         sender_id: currentUser.id,
         title: 'Credit Order Approved — ' + order.order_number,
-        body: 'Credit order for ' + order.customers?.name + ' (GH₵' + parseFloat(order.total_amount).toLocaleString() + ') approved by Manager. Please collect payment details.',
+        body: 'Credit order for ' + order.customers?.name + ' (GH₵' + parseFloat(order.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ') approved by Manager. Please collect payment details.',
         type: 'credit_approved',
         reference_id: order.id,
         is_read: false
@@ -125,8 +129,8 @@ export default function CreditApprovals({ orders: initialOrders, currentUser }: 
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2 flex-wrap">
           <CreditCard className="w-4 h-4" style={{ color: '#dc2626' }} />
           <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>Credit Order Approvals</h3>
           {pendingOrders.length > 0 && (
@@ -135,7 +139,7 @@ export default function CreditApprovals({ orders: initialOrders, currentUser }: 
             </span>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {[
             { key: 'pending', label: 'Pending', count: pendingOrders.length, color: '#dc2626' },
             { key: 'approved', label: 'Approved', count: approvedOrders.length, color: '#059669' },
@@ -200,7 +204,7 @@ export default function CreditApprovals({ orders: initialOrders, currentUser }: 
                   </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>GH₵{parseFloat(order.total_amount).toLocaleString()}</p>
+                  <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>GH₵{parseFloat(order.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   {isPending && (
                     <button onClick={() => setActiveOrder(isActive ? null : order.id)}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium"
@@ -213,7 +217,7 @@ export default function CreditApprovals({ orders: initialOrders, currentUser }: 
 
               <div className="px-5 pb-3 flex flex-wrap gap-2">
                 {order.order_items?.map((item: any, i: number) => (
-                  <span key={i} className="text-xs px-2 py-1 rounded-lg"
+                  <span key={item.id || item.product_id || i} className="text-xs px-2 py-1 rounded-lg"
                     style={{ background: 'var(--table-header-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}>
                     {item.products?.name} × {item.quantity} @ GH₵{parseFloat(item.unit_price).toFixed(2)}
                   </span>
@@ -236,7 +240,7 @@ export default function CreditApprovals({ orders: initialOrders, currentUser }: 
                         { icon: Phone, label: order.customers?.phone || 'N/A' },
                         { icon: MapPin, label: order.customers?.address || 'N/A' },
                       ].map((row, i) => (
-                        <div key={i} className="flex items-center gap-2">
+                        <div key={row.label || i} className="flex items-center gap-2">
                           <row.icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--text-secondary)' }} />
                           <span className="text-xs" style={{ color: 'var(--text-primary)' }}>{row.label}</span>
                         </div>
@@ -247,7 +251,7 @@ export default function CreditApprovals({ orders: initialOrders, currentUser }: 
                       {[
                         { label: 'Ghana Card #', value: paymentDetails.ghana_card_number || 'Not provided' },
                         { label: 'Due Date', value: paymentDetails.due_date ? new Date(paymentDetails.due_date).toLocaleDateString('en-GB') : 'Not set' },
-                        { label: 'Order Total', value: 'GH₵' + parseFloat(order.total_amount).toLocaleString() },
+                        { label: 'Order Total', value: 'GH₵' + parseFloat(order.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
                       ].map(row => (
                         <div key={row.label} className="flex justify-between">
                           <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>

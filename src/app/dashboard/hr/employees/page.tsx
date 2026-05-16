@@ -32,7 +32,7 @@ export default async function EmployeesPage() {
       <main className="max-w-7xl mx-auto">
 
         {/* Stats by department */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {departments.map(dept => {
             const count = employees?.filter(e => e.department === dept).length || 0
             if (count === 0) return null
@@ -47,7 +47,8 @@ export default async function EmployeesPage() {
 
         {/* Employee Table */}
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full" style={{ minWidth: 600 }}>
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Name</th>
@@ -94,6 +95,7 @@ export default async function EmployeesPage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </main>
     </div>
